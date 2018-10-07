@@ -1,9 +1,10 @@
-package com.bcv.lessons;
+package test;
 
-public class IntToChar {
+public class IntToCharTest {
     public static void main(String[] args) {
         int a = 98;
-        char c = (char)a;
+        char c = (char) a;
         System.out.println(c);
 
-    }}
+    }
+}
