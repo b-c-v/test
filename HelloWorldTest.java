@@ -6,6 +6,7 @@ public class HelloWorldTest {
 
 	public static void main(String[] args) {
 		myPrint("Hello ");
+		myPrint("I like name ");
 
 
 	}
