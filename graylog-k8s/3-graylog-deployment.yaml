@@ -1,0 +1,108 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: graylog
+  name: graylog
+spec:
+  podManagementPolicy: OrderedReady
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: graylog
+  template:
+    metadata:
+      labels:
+        app: graylog
+    spec:
+      containers:
+      - env:
+        - name: GRAYLOG_PASSWORD_SECRET
+          value: "somepasswordpepper"
+        - name: GRAYLOG_ROOT_PASSWORD_SHA2
+          value: 057ba03d6c44104863dc7361fe4578965d1887360f90a0895882e58a6248fc86
+        - name: GRAYLOG_HTTP_BIND_ADDRESS
+          value: 0.0.0.0:9000
+        - name: GRAYLOG_HTTP_EXTERNAL_URI
+          value: http://127.0.0.1:9000/
+        image: graylog/graylog:5.1.6
+        imagePullPolicy: IfNotPresent
+        name: graylog-master
+        ports:
+        - containerPort: 9000
+          name: http
+          protocol: TCP
+        - containerPort: 12201
+          name: udp-input
+          protocol: TCP
+        - containerPort: 1514
+          name: tcp-input
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 4
+          httpGet:
+            path: /api/system/lbstatus
+            port: 9000
+            scheme: HTTP
+          initialDelaySeconds: 120
+          periodSeconds: 3
+          successThreshold: 1
+          timeoutSeconds: 3
+        securityContext:
+          privileged: true
+          runAsUser: 1100
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /usr/share/graylog/data/journal
+          name: graylog-persistent-storage
+          subPath: graylog
+      dnsPolicy: ClusterFirst
+      securityContext:
+              runAsUser: 1100
+              runAsGroup: 1100
+              fsGroup: 1100      
+  updateStrategy:
+    type: OnDelete
+  volumeClaimTemplates:
+  - metadata:
+      name: graylog-persistent-storage
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: graylog
+  name: graylog
+spec:
+  ports:
+  - name: "80"
+    port: 80
+    targetPort: 9000
+  - name: "443"
+    port: 443
+    targetPort: 9000
+  - name: "514"
+    port: 514
+    targetPort: 514
+  - name: 514-udp
+    port: 514
+    protocol: UDP
+    targetPort: 514
+  - name: "12201"
+    port: 12201
+    targetPort: 12201
+  - name: 12201-udp
+    port: 12201
+    protocol: UDP
+    targetPort: 12201
+  selector:
+    app: graylog
+  type: LoadBalancer
