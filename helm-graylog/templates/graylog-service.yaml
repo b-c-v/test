@@ -4,6 +4,7 @@ metadata:
   labels:
     app: graylog
   name: graylog
+  namespace: {{ .Values.namespace_values.tag }}
 spec:
   ports:
   - name: "80"

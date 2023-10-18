@@ -5,6 +5,7 @@ metadata:
     app: elasticsearch
     component: elasticsearch
   name: elasticsearch
+  namespace: {{ .Values.namespace_values.tag }}
 spec:
   podManagementPolicy: Parallel
   replicas: 1

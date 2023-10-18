@@ -1,3 +1,6 @@
+namespace_values:
+  tag: "graylog"
+
 mongo_values:
   image: "mongo"
   tag: "6.0.5-jammy"
