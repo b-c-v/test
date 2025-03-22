@@ -8,4 +8,3 @@ id_rsa*
 *.tfstate.*
 *.tfvars
 crash.log
-
