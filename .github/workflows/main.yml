@@ -9,9 +9,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
-        uses: actions/checkout@2
+        uses: actions/checkout@v4
       - name: Set up python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: 3.8
       - name: Install libraries
@@ -24,7 +24,7 @@ jobs:
             cd function
             zip -r ../${{ github.sha }}.zip .
       - name: Archive artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: zipped-bundle
           path: ${{ github.sha }}.zip
