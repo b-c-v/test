@@ -1,0 +1,337 @@
+name: Any workflow name # Имя workflow, отображаемое в интерфейсе Actions
+on: # События, которые запускают этот workflow
+  # Push-событие для определённых веток и путей
+  push: # Запускать при push, если совпадают эти фильтры
+    branches: # Разрешённые исходные ветки
+      - main # Основная production-ветка
+      - develop # Общая ветка разработки
+      - 'release/**' # Любая release-ветка
+    paths: # Запускать только при изменении этих путей
+      - 'src/**' # Исходные файлы приложения
+      - '.github/workflows/**' # Файлы определений workflow
+    tags: # Запускать на совпадающих тегах
+      - 'v*' # Теги версий, например v1.0.0
+
+  pull_request: # Проверять изменения перед merge
+    branches: # Целевые ветки для PR
+      - main # PR, направленные в main
+    types: # Действия PR, при которых нужно повторно запускать проверки
+      - opened
+      - synchronize # В PR были отправлены новые коммиты
+      - reopened
+
+  schedule: # Запуск по расписанию (cron)
+    - cron: '0 2 * * *' # Ежедневно в 2:00 UTC
+
+  workflow_dispatch: # Разрешить ручной запуск workflow из интерфейса GitHub
+    inputs: # Параметры, которые вводит пользователь
+      deployment_target: # Выбор целевого окружения
+        description: 'Deployment target environment'
+        required: true # Пользователь должен выбрать окружение
+        default: 'staging' # Более безопасное окружение по умолчанию
+        type: choice
+        options: # Допустимые значения в выпадающем списке
+          - staging
+          - production
+      debug_mode: # Необязательный флаг для отладки
+        description: 'Enable debug mode'
+        required: false
+        type: boolean
+
+  workflow_run: # Запускать после завершения другого workflow
+    workflows: ['other_workflow'] # Имя родительского workflow
+    types: # Типы событий workflow_run
+      - completed
+
+  repository_dispatch: # Внешние системы могут запускать этот workflow через API
+    types: # Пользовательские имена событий, которые принимает этот workflow
+      - custom_event
+
+env: # Глобальные переменные окружения, доступные всем jobs
+  NODE_VERSION: '18'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }} # Имя образа на основе имени репозитория
+
+concurrency: # Предотвратить пересекающиеся запуски для одного и того же ref
+  group: ${{ github.workflow }}-${{ github.ref }} # Уникальный ключ concurrency
+  cancel-in-progress: true # Останавливать старый запуск при старте нового
+
+jobs:
+  any_job_name: # Job 1: Название задания (используется matrix strategy)
+    name: Build on ${{ matrix.os }} - Node ${{ matrix.node }} # Понятное имя job в интерфейсе
+    runs-on: ${{ matrix.os }} # Образ runner берётся из matrix
+    timeout-minutes: 30 # Жёсткий лимит времени для этого job
+    strategy: # Настройка поведения matrix-выполнения
+      # Установить fail-fast в false, чтобы выполнить все matrix jobs, даже если один из них завершится ошибкой
+      fail-fast: false
+      matrix: # Комбинации для сборки и тестирования
+        os: [ubuntu-24.04, macos-15, windows-2025] # Поддерживаемые операционные системы (see github-hosted-runners)
+        node: ['16', '18', '20'] # Поддерживаемые версии Node.js
+        exclude: # Исключить определённые комбинации
+          - os: macos-15
+            node: '16'
+
+    env: # Переменные, доступные только в any_job_name
+      BUILD_ENV: production
+      DEBUG: false
+
+    outputs: # Значения, которые могут использовать другие jobs
+      artifact_id: ${{ steps.build_step.outputs.artifact_id }} # Идентификатор артефакта из build_step
+      build_status: ${{ job.status }} # Итоговый статус job any_job_name
+      script_file: ${{ steps.build_step.outputs.any_file_name }} # Пример дополнительного output из build_step
+
+    steps: # Последовательность шагов, которые будут выполнены
+      - name: Checkout repository # Шаг 1: Получение кода из репозитория
+        uses: actions/checkout@v5 # Официальный action для checkout
+        with: # Параметры checkout
+          fetch-depth: 0 # Полная история git
+          submodules: recursive # Также получить вложенные репозитории
+          token: ${{ secrets.GITHUB_TOKEN }} # Встроенный токен аутентификации
+
+      - name: Setup Node.js ${{ matrix.node }} # Шаг 2: Установить требуемую версию Node.js
+        uses: actions/setup-node@v5
+        with: # Параметры настройки Node.js
+          node-version: ${{ matrix.node }} # Версия из matrix
+          registry-url: 'https://registry.npmjs.org' # Реестр npm по умолчанию
+
+      - name: 'Example 1: Single-line pipe (|) - joins lines with &&' # Шаг 3: однострочный run с pipe (|) - всё в одной строке
+        run: echo "Step 1 executed" | tee output.txt
+
+      - name: 'Example 2: Multi-line with pipe (|) - bash commands' # Шаг 4: многострочный run с pipe (|) - сохраняет переводы строк
+        run: |
+          echo "Installing dependencies..."
+          echo "Line 1: Setting up environment"
+          echo "Line 2: Checking versions"
+          echo "Line 3: Done"
+
+      - name: 'Example 3: Folded style (>) - not common in workflows' # Шаг 5: folded style с > - объединяет строки пробелами
+        run: >
+          echo "This is a long command that spans"
+          "multiple lines but gets joined"
+          "with spaces instead of newlines"
+
+      - name: 'Example 4: Literal block (|-) - strips final newline' # Шаг 6: literal block с |- - удаляет завершающий перевод строки
+        run: |-
+          echo "First line"
+          echo "Second line"
+
+      - name: Build and generate output # Шаг 7: Создать значения для downstream jobs
+        id: build_step # Идентификатор step для outputs
+        shell: bash
+        run: |
+          echo "Building project on ${{ matrix.os }}..."
+          echo "Node version: ${{ matrix.node }}"
+          echo "artifact_id=build-${{ github.run_number }}" >> $GITHUB_OUTPUT
+          echo "any_file_name=script-${{ github.run_number }}.sh" >> "$GITHUB_OUTPUT"
+
+      - name: 'Conditional: Only on success' # Шаг 8: Выполняется, когда предыдущие steps прошли успешно
+        if: success() # Встроенная проверка статуса
+        run: echo "Build succeeded on ${{ matrix.os }}"
+
+      - name: 'Conditional: Only on failure' # Шаг 9: Выполняется после неуспешного step
+        if: failure() # Встроенная проверка на ошибку
+        run: echo "Build failed, continuing anyway..."
+        continue-on-error: true # Не проваливать весь job
+
+      - name: 'Conditional: Only on Ubuntu' # Шаг 10: Логика, специфичная для matrix
+        if: matrix.os == 'ubuntu-24.04' # Ограничить этот step только Ubuntu runner-ами
+        run: echo "Running Ubuntu-specific commands"
+
+      - name: 'Conditional: Only on push' # Шаг 11: Поведение, зависящее от типа события
+        if: github.event_name == 'push' # Только для push-событий
+        run: echo "This is a push event"
+
+      - name: 'Conditional: Branch contains pattern' # Шаг 12: Строковая функция в выражениях
+        if: contains(github.ref, 'release') # Совпадение с release ref
+        run: echo "Building release branch"
+
+      - name: 'Step with continue-on-error: true' # Шаг 13: Пример step, который не блокирует workflow
+        continue-on-error: true # Workflow продолжится после ошибки
+        run: echo "This step can fail without failing the job"
+
+      - name: 'Working directory example' # Шаг 14: Переопределить рабочий каталог по умолчанию
+        working-directory: . # Текущий корень репозитория
+        run: 'echo "Current directory: $(pwd)"'
+
+      - name: 'Using bash shell explicitly' # Шаг 15: Явно использовать синтаксис bash
+        shell: bash # Shell, используемый для выполнения run-команды
+        run: echo "Using bash shell explicitly"
+
+      - name: 'Using PowerShell shell' # Шаг 16: Пример shell, ориентированного на Windows
+        shell: pwsh # PowerShell Core
+        run: Write-Host "Using PowerShell shell"
+
+      - name: Upload build artifact # Шаг 17: Сохранить результат сборки для последующих jobs
+        uses: actions/upload-artifact@v4
+        with: # Параметры загрузки артефакта
+          name: build-${{ matrix.os }}-${{ matrix.node }} # Уникальный артефакт для каждого matrix job
+          path: ./dist # Каталог для архивирования
+          retention-days: 7 # Хранить артефакт одну неделю
+          if-no-files-found: warn # Предупреждать вместо завершения с ошибкой
+
+  lint: # Job 2: выполняется параллельно с any_job_name
+    name: Lint and Test # Комбинированный job проверки качества кода
+    runs-on: ubuntu-24.04 # Фиксированный Linux runner
+    timeout-minutes: 15 # Более короткий лимит для быстрой обратной связи
+
+    # Переменные окружения уровня step могут переопределять глобальные env
+    env: # Переменные окружения, специфичные для job
+      CI: true # Указывает на неинтерактивное выполнение в CI
+
+    steps: # Команды проверки для lint/test
+      - name: Checkout repository # Шаг 1: Получение репозитория
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js 18 # Шаг 2: Установить Node.js версии 18
+        uses: actions/setup-node@v5
+        with:
+          node-version: '18'
+
+      - name: Get commit info # Шаг 3: Сохранение переменных в output step
+        id: commit
+        run: |
+          echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "message=$(git log -1 --pretty=%B)" >> $GITHUB_OUTPUT
+          echo "author=$(git log -1 --pretty=%an)" >> $GITHUB_OUTPUT
+
+      - name: Display commit info # Шаг 4: Использование outputs предыдущего step
+        run: |
+          echo "Commit SHA: ${{ steps.commit.outputs.sha }}"
+          echo "Author: ${{ steps.commit.outputs.author }}"
+
+      - name: 'Example: Multiple commands with set -e' # Шаг 5: Несколько команд с корректной обработкой ошибок
+        run: |
+          set -e
+          echo "Step 1: Checking syntax"
+          echo "Step 2: Running linter"
+          echo "Step 3: Running tests"
+
+      - name: 'Example: Loop through items' # Шаг 6: Циклическая конструкция
+        run: |
+          for i in 1 2 3; do
+            echo "Processing item $i"
+          done
+
+      - name: 'Example: Conditional logic in script' # Шаг 7: Условная логика в run block
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            echo "Running PR checks..."
+          elif [ "${{ github.event_name }}" == "push" ]; then
+            echo "Running push checks..."
+          else
+            echo "Running scheduled checks..."
+          fi
+
+  security: # Job 3: параллельный job проверки безопасности
+    name: Security Scan # Имя job в интерфейсе Actions
+    runs-on: ubuntu-24.04
+    permissions: # Минимально необходимые права токена для этого job
+      contents: read # Разрешить checkout репозитория
+      security-events: write # Нужно для публикации результатов security-проверок
+    timeout-minutes: 20
+
+    steps: # Steps job-а security
+      - name: Checkout repository # Шаг 1: Получить исходный код для сканирования
+        uses: actions/checkout@v5
+
+      - name: Run security checks # Шаг 2: Заглушка для команд сканера
+        run: echo "Performing security scanning..."
+
+      - name: 'Example: Variable substitution' # Шаг 3: Вывести выбранные значения GitHub context
+        run: |
+          echo "Repository: ${{ github.repository }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "SHA: ${{ github.sha }}"
+          echo "Actor: ${{ github.actor }}"
+          echo "Run ID: ${{ github.run_id }}"
+          echo "Run Number: ${{ github.run_number }}"
+
+  docs: # Job 4: зависит от других jobs
+    name: Generate Documentation # Сгенерировать или опубликовать документацию
+    runs-on: ubuntu-24.04
+    # Этот job запускается только если lint завершился успешно
+    needs: lint # Дождаться завершения job lint
+    if: success() # Пропустить, если обязательная предыдущая работа завершилась ошибкой
+    timeout-minutes: 10
+
+    steps: # Steps генерации документации
+      - name: Checkout repository # Шаг 1: Получение репозитория
+        uses: actions/checkout@v5
+
+      - name: Generate documentation # Шаг 2: Сгенерировать документацию
+        run: echo "Generating documentation..."
+
+      - name: 'Example: Using secrets (safely)' # Шаг 3: Демонстрирует использование секрета без вывода его значения
+        run: echo "Using secret token (length=${{ secrets.GITHUB_TOKEN != '' && 'set' || 'unset' }})"
+
+      - name: 'Example: Multiline with escaped characters' # Шаг 4: Пример многострочного скрипта
+        run: |
+          echo "Multi-line example with special characters:"
+          echo " - Item 1"
+          echo " - Item 2"
+          echo " - Item 3"
+
+  deploy: # Job 5: зависит от any_job_name и security
+    name: Deploy to ${{ github.event.inputs.deployment_target || 'staging' }} # Динамическое имя целевого окружения
+    runs-on: ubuntu-24.04
+    # Требует успешного завершения any_job_name и security
+    needs: [any_job_name, security] # Дождаться обоих upstream jobs
+    # Запускается только из main или при ручном запуске
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' # Выполнять деплой только из main или при ручном запуске
+    timeout-minutes: 25
+    environment: # Метаданные GitHub environment
+      name: ${{ github.event.inputs.deployment_target || 'staging' }} # Выбранное окружение
+      url: https://example.com # URL целевого приложения
+
+    steps: # Steps деплоя
+      - name: Checkout repository # Шаг 1: Получение репозитория
+        uses: actions/checkout@v5
+
+      - name: Retrieve any_job_name outputs # Шаг 2: Прочитать значения из job any_job_name
+        run: |
+          echo "Build artifacts from: ${{ needs.any_job_name.outputs.artifact_id }}"
+          echo "Build status: ${{ needs.any_job_name.outputs.build_status }}"
+
+      - name: Download all artifacts # Шаг 3: Восстановить файлы, загруженные предыдущими jobs
+        uses: actions/download-artifact@v4
+
+      - name: Deploy to ${{ github.event.inputs.deployment_target || 'staging' }} # Шаг 4: Основной блок команд деплоя
+        run: |
+          echo "Deploying to environment: ${{ github.event.inputs.deployment_target || 'staging' }}"
+          echo "Debug mode: ${{ github.event.inputs.debug_mode == true && 'enabled' || 'disabled' }}"
+
+      - name: 'Production deploy (manual only)' # Шаг 5: Дополнительное предупреждение для production
+        if: github.event.inputs.deployment_target == 'production' # Запускать только для production
+        run: 'echo "WARNING: Deploying to production!"'
+
+      - name: 'Example: Context functions' # Шаг 6: Использование функций GitHub context
+        run: |
+          echo "Contains 'main': ${{ contains(github.ref, 'main') }}"
+          echo "StartsWith refs/: ${{ startsWith(github.ref, 'refs/') }}"
+          echo "Format: ${{ format('Branch: {0}', github.ref) }}"
+
+  status: # Job 6: финальный job отчётности и очистки
+    name: Workflow Status # Сводка по результату pipeline
+    runs-on: ubuntu-24.04
+    if: always() # Всегда запускается, даже если предыдущие jobs завершились ошибкой
+    needs: [any_job_name, lint, security, docs, deploy] # Дождаться всех основных jobs
+
+    steps: # Steps финальной отчётности по статусу
+      - name: Report success # Шаг 1: Сообщение для полностью успешного workflow
+        if: success() # Запускается только если все обязательные jobs прошли успешно
+        run: echo "✓ All jobs completed successfully"
+
+      - name: Report failure # Шаг 2: Сообщение для состояния workflow с ошибкой
+        if: failure() # Запускается, когда любой обязательный job завершается ошибкой
+        run: echo "✗ Some jobs failed, see logs above"
+
+      - name: Report cancellation # Шаг 3: Сообщение для отменённых workflow
+        if: cancelled() # Запускается только когда workflow отменён
+        run: echo "⊘ Workflow was cancelled"
+
+      - name: 'Example: Array/JSON in run command' # Шаг 4: Прочитать агрегированные результаты из зависимостей
+        run: |
+          echo "Job results:"
+          echo " any_job_name: ${{ needs.any_job_name.result }}"
+          echo " lint: ${{ needs.lint.result }}"
+          echo " security: ${{ needs.security.result }}"
