@@ -76,9 +76,9 @@ jobs:
       PORT: 1234 # Переопределить глобальный PORT для этого job
 
     outputs: # Значения, которые могут использовать другие jobs
-      script_file: ${{ steps.build_step.outputs.any_file_name }} # Значение переменной any_file_name из шага build_step
-      any_artifact_id: ${{ steps.build_step.outputs.artifact_id }} # Идентификатор артефакта из build_step
-      build_status: ${{ job.status }} # Итоговый статус job any_job_name
+      script_file_var: ${{ steps.build_step_id.outputs.any_file_name_var }} # Значение переменной any_file_name из шага build_step
+      any_artifact_id_var: ${{ steps.build_step_id.outputs.artifact_id_var }} # Идентификатор артефакта из build_step
+      build_status_var: ${{ job.status }} # Итоговый статус job any_job_name
 
     steps: # Последовательность шагов, которые будут выполнены
       - name: Checkout repository # Шаг 1: Получение кода из репозитория
@@ -92,7 +92,7 @@ jobs:
         uses: actions/setup-node@v5
         with: # Параметры настройки Node.js
           node-version: ${{ matrix.node }} # Версия из matrix
-          registry-url: 'https://registry.npmjs.org' # Реестр npm по умолчанию
+          registry-url: "https://registry.npmjs.org" # Реестр npm по умолчанию
 
       - name: Print job PORT variable # Шаг 2.1: Вывести значение переменной PORT
         run: |
@@ -101,15 +101,14 @@ jobs:
           echo 'JOB_PORT=$PORT' # Нужно использовать "", чтобы переменная была интерполирована в bash
           echo 'JOB_PORT=${{ env.PORT }}' # В этом случае переменная будет интерполирована и выведет значения PORT
           echo 'JOB_ID=${{ env.GITHUB_JOB }}' # Вывод значения default environment variable (see https://docs.github.com/en/actions/reference/workflows-and-actions/variables)
-          echo "MY_SECRET_VAR=${{ secrets.ANY_SECRET_VAR != '' && 'set' || 'unset' }}" # Использование секрета. Переменную с таким именем необходимо предварительно сохранить в Settings ==> Secrets and variables ==> Actions. Выводит 'set' если секрет определён, и 'unset' если он не задан.
 
       - name: Check if package.json exists # Шаг 3: Проверить наличие package.json
-        id: check_package_json
+        id: check_package_json_id # Идентификатор шага для использования в if условии в следующих steps
         shell: bash
-        run: echo "exists=$(test -f package.json && echo 'true' || echo 'false')" >> "$GITHUB_OUTPUT"
+        run: echo "exists_var=$(test -f package.json && echo 'true' || echo 'false')" >> "$GITHUB_OUTPUT"
 
       - name: Cache dependencies # Шаг 4: Кэширование зависимостей npm для ускорения сборки. Кэш можно использовать в любом другом workflow или job, который использует тот же ключ кэша.
-        if: steps.check_package_json.outputs.exists == 'true' # Только если package.json существует
+        if: steps.check_package_json_id.outputs.exists_var == 'true' # Только если package.json существует. check_package_json_id - это id предыдущего шага, outputs.exists_var - это значение, которое было записано в $GITHUB_OUTPUT в том шаге.
         uses: actions/cache@v4 # Action для кэширования файлов между runs
         with: # Параметры кэширования
           path: node_modules # Путь к директории для кэширования (можно использовать ~/.npm для более компактного кэша)
@@ -119,13 +118,13 @@ jobs:
             ${{ runner.os }}-node- # Ищет кэш для этой ОС с любой версией Node
 
       - name: Install dependencies (using cache) # Шаг 5: Установить зависимости, используя кэшированные node_modules если доступны
-        if: steps.check_package_json.outputs.exists == 'true' # Только если package.json существует
+        if: steps.check_package_json_id.outputs.exists_var == 'true'
         run: npm install # npm install используется в CI/CD окружения, кэш ускорит установку если он доступен
 
-      - name: 'Example 1: Single-line pipe (|) - joins lines with &&' # Шаг 6: однострочный run с pipe (|) - всё в одной строке
+      - name: "Example 1: Single-line pipe (|) - joins lines with &&" # Шаг 6: однострочный run с pipe (|) - всё в одной строке
         run: echo "Step 1 executed" | tee output.txt
 
-      - name: 'Example 2: Multi-line with pipe (|) - bash commands' # Шаг 7: многострочный run с pipe (|) - сохраняет переводы строк
+      - name: "Example 2: Multi-line with pipe (|) - bash commands" # Шаг 7: многострочный run с pipe (|) - сохраняет переводы строк
         run: |
           echo "Installing dependencies..."
           echo "Line 1: Setting up environment"
@@ -144,15 +143,15 @@ jobs:
           echo "Second line"
 
       - name: Build and generate output # Шаг 10: Создать значения для downstream jobs
-        id: build_step # Идентификатор step для outputs
+        id: build_step_id # Идентификатор step для outputs
         shell: bash # Явно указать shell для многострочного run
         run: |
           echo "Building project on ${{ matrix.os }}..."
           echo "Node version: ${{ matrix.node }}"
-          echo "artifact_id=build-${{ github.run_number }}" >> $GITHUB_OUTPUT # Записываем step output в спецфайл $GITHUB_OUTPUT, чтобы значение стало доступно в следующих шагах/job как outputs
-          echo "any_file_name=script-${{ github.run_number }}.sh" >> $GITHUB_OUTPUT # In next jobs you can access this value via needs.<job_id>.outputs.any_file_name
+          echo "artifact_id_var=build-${{ github.run_number }}" >> $GITHUB_OUTPUT # Записываем step output в спецфайл $GITHUB_OUTPUT, чтобы значение стало доступно в следующих шагах/job как outputs
+          echo "any_file_name_var=script-${{ github.run_number }}.sh" >> $GITHUB_OUTPUT # In next jobs you can access this value via needs.<job_id>.outputs.any_file_name_var
 
-      - name: 'Conditional: Only on success' # Шаг 11: Выполняется, когда предыдущие steps прошли успешно
+      - name: "Conditional: Only on success" # Шаг 11: Выполняется, когда предыдущие steps прошли успешно
         if: success() # Встроенная проверка статуса
         run: echo "Build succeeded on ${{ matrix.os }}"
 
@@ -212,15 +211,15 @@ jobs:
       - name: Setup Node.js 18 # Шаг 2: Установить Node.js версии 18
         uses: actions/setup-node@v5
         with:
-          node-version: '18'
+          node-version: "18"
 
       - name: Check if package.json exists # Шаг 3: Проверить наличие package.json
-        id: check_package_json
+        id: check_package_json_id
         shell: bash
-        run: echo "exists=$(test -f package.json && echo 'true' || echo 'false')" >> "$GITHUB_OUTPUT"
+        run: echo "exists_var=$(test -f package.json && echo 'true' || echo 'false')" >> "$GITHUB_OUTPUT"
 
       - name: Cache dependencies # Шаг 4: Восстановить кэш зависимостей, созданный в any_job_name
-        if: steps.check_package_json.outputs.exists == 'true' # Только если package.json существует
+        if: steps.check_package_json_id.outputs.exists_var == 'true' # Только если package.json существует
         uses: actions/cache@v4 # Action для кэширования файлов между runs
         with: # Параметры кэширования
           path: node_modules # Путь к директории для кэширования
@@ -230,22 +229,22 @@ jobs:
             ${{ runner.os }}-node- # Ищет кэш для любой версии Node на этой ОС
 
       - name: Install dependencies (using cache) # Шаг 5: Установить зависимости, используя кэш если доступен
-        if: steps.check_package_json.outputs.exists == 'true' # Только если package.json существует
+        if: steps.check_package_json_id.outputs.exists_var == 'true' # Только если package.json существует
         run: npm install # npm install будет использовать кэшированные node_modules если они доступны
 
       - name: Get commit info # Шаг 6: Сохранение переменных в output step
-        id: commit
+        id: commit_id
         run: |
-          echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-          echo "message=$(git log -1 --pretty=%B)" >> $GITHUB_OUTPUT
-          echo "author=$(git log -1 --pretty=%an)" >> $GITHUB_OUTPUT
+          echo "sha_var=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "message_var=$(git log -1 --pretty=%B)" >> $GITHUB_OUTPUT
+          echo "author_var=$(git log -1 --pretty=%an)" >> $GITHUB_OUTPUT
 
       - name: Display commit info # Шаг 7: Использование outputs предыдущего step
         run: |
-          echo "Commit SHA: ${{ steps.commit.outputs.sha }}"
-          echo "Author: ${{ steps.commit.outputs.author }}"
+          echo "Commit SHA: ${{ steps.commit_id.outputs.sha_var }}"
+          echo "Author: ${{ steps.commit_id.outputs.author_var }}"
 
-      - name: 'Example: Multiple commands with set -e' # Шаг 8: Несколько команд с корректной обработкой ошибок
+      - name: "Example: Multiple commands with set -e" # Шаг 8: Несколько команд с корректной обработкой ошибок
         run: |
           set -e
           echo "Step 1: Checking syntax"
@@ -330,20 +329,23 @@ jobs:
     # Запускается только из main или при ручном запуске
     if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' # Выполнять деплой только из main или при ручном запуске
     timeout-minutes: 25
-    environment: # Метаданные GitHub environment
-      name: ${{ github.event.inputs.deployment_target || 'staging' }} # Выбранное окружение
+    environment: # Используемый определённый GitHub environment для этого job (Settings ==> Environments)
+      name: ${{ github.event.inputs.deployment_target || 'staging' }} # Выбранное окружение (можно использовать разные environments для разных job.)
       url: https://example.com # URL целевого приложения
 
     steps: # Steps деплоя
       - name: Checkout repository # Шаг 1: Получение репозитория
         uses: actions/checkout@v5
 
-      - name: Retrieve any_job_name outputs # Шаг 2: Прочитать значения из job any_job_name
+      - name: "Example: Using secrets (safe)" # Шаг 2: Использование секрета без вывода его значения
+        run: echo "MY_SECRET_VAR=${{ secrets.ANY_SECRET_VAR != '' && 'set' || 'unset' }}" # Переменную ANY_SECRET_VAR необходимо предварительно сохранить в Settings ==> Secrets and variables ==> Actions или Settings ==> Environments ==> Staging. Выводит 'set' если секрет определён, и 'unset' если он не задан.
+
+      - name: Retrieve any_job_name outputs # Шаг 3: Прочитать значения из job any_job_name
         run: |
-          echo "Build artifacts from: ${{ needs.any_job_name.outputs.any_artifact_id }}" # Вывод ID артефакта, переданного из job any_job_name через outputs
-          echo "Build status: ${{ needs.any_job_name.outputs.build_status }}" # Вывод статуса сборки из upstream job
-          echo "Script file: ${{ needs.any_job_name.outputs.script_file }}" # Вывод пути к файлу скрипта, сгенерированному в any_job_name. Jobs, которые зависят от any_job_name через needs, могут читать строку.
-      - name: Download all artifacts # Шаг 3: Загрузить все артефакты из предыдущих jobs (in this case only from any_job_name)
+          echo "Build artifacts from: ${{ needs.any_job_name.outputs.any_artifact_id_var }}" # Вывод ID артефакта, переданного из job any_job_name через outputs
+          echo "Build status: ${{ needs.any_job_name.outputs.build_status_var }}" # Вывод статуса сборки из upstream job
+          echo "Script file: ${{ needs.any_job_name.outputs.script_file_var }}" # Вывод пути к файлу скрипта, сгенерированному в any_job_name. Jobs, которые зависят от any_job_name через needs, могут читать строку.
+      - name: Download all artifacts # Шаг 4: Загрузить все артефакты из предыдущих jobs (in this case only from any_job_name)
         uses: actions/download-artifact@v4 # Artifacts are available after needs: [any_job_name]
 
       - name: Deploy to ${{ github.event.inputs.deployment_target || 'staging' }} # Шаг 4: Основной блок команд деплоя
