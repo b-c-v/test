@@ -1,4 +1,4 @@
-name: Any workflow name # Имя workflow, отображаемое в интерфейсе Actions
+# any_name.yml name: Any workflow name # Имя workflow, отображаемое в интерфейсе Actions
 on: # События, которые запускают этот workflow
   # Push-событие для определённых веток и путей
   push: # Запускать при push, если совпадают эти фильтры
@@ -66,7 +66,7 @@ jobs:
       fail-fast: false
       matrix: # Комбинации для сборки и тестирования
         os: [ubuntu-24.04, macos-15, windows-2025] # Поддерживаемые операционные системы (see github-hosted-runners)
-        node: ['16', '18', '20'] # Поддерживаемые версии Node.js
+        node: ['18', '20'] # Поддерживаемые версии Node.js
         exclude: # Исключить определённые комбинации
           - os: macos-15
             node: '16'
@@ -76,9 +76,9 @@ jobs:
       DEBUG: false
 
     outputs: # Значения, которые могут использовать другие jobs
-      artifact_id: ${{ steps.build_step.outputs.artifact_id }} # Идентификатор артефакта из build_step
+      script_file: ${{ steps.build_step.outputs.any_file_name }} # Значение переменной any_file_name из шага build_step
+      any_artifact_id: ${{ steps.build_step.outputs.artifact_id }} # Идентификатор артефакта из build_step
       build_status: ${{ job.status }} # Итоговый статус job any_job_name
-      script_file: ${{ steps.build_step.outputs.any_file_name }} # Пример дополнительного output из build_step
 
     steps: # Последовательность шагов, которые будут выполнены
       - name: Checkout repository # Шаг 1: Получение кода из репозитория
@@ -93,6 +93,18 @@ jobs:
         with: # Параметры настройки Node.js
           node-version: ${{ matrix.node }} # Версия из matrix
           registry-url: 'https://registry.npmjs.org' # Реестр npm по умолчанию
+
+      - name: Cache dependencies # Шаг 2.5: Кэширование зависимостей npm для ускорения сборки
+        uses: actions/cache@v4 # Action для кэширования файлов между runs
+        with: # Параметры кэширования
+          path: node_modules # Путь к директории для кэширования (можно использовать ~/.npm для более компактного кэша)
+          key: ${{ runner.os }}-node-${{ matrix.node }}-${{ hashFiles('**/package-lock.json') }} # Уникальный ключ кэша на основе OS, версии Node и хешей package-lock.json 
+          restore-keys: | # Альтернативные ключи для поиска, если точный ключ не найден
+            ${{ runner.os }}-node-${{ matrix.node }}- # Ищет кэш для этой комбинации ОС и версии Node
+            ${{ runner.os }}-node- # Ищет кэш для этой ОС с любой версией Node
+
+      - name: Install dependencies (using cache) # Шаг 2.6: Установить зависимости, используя кэшированные node_modules если доступны
+        run: npm install # npm install используется в CI/CD окружения, кэш ускорит установку если он доступен
 
       - name: 'Example 1: Single-line pipe (|) - joins lines with &&' # Шаг 3: однострочный run с pipe (|) - всё в одной строке
         run: echo "Step 1 executed" | tee output.txt
@@ -117,12 +129,12 @@ jobs:
 
       - name: Build and generate output # Шаг 7: Создать значения для downstream jobs
         id: build_step # Идентификатор step для outputs
-        shell: bash
+        shell: bash # Явно указать shell для многострочного run
         run: |
           echo "Building project on ${{ matrix.os }}..."
           echo "Node version: ${{ matrix.node }}"
-          echo "artifact_id=build-${{ github.run_number }}" >> $GITHUB_OUTPUT
-          echo "any_file_name=script-${{ github.run_number }}.sh" >> "$GITHUB_OUTPUT"
+          echo "artifact_id=build-${{ github.run_number }}" >> $GITHUB_OUTPUT # Записываем step output в спецфайл $GITHUB_OUTPUT, чтобы значение стало доступно в следующих шагах/job как outputs
+          echo "any_file_name=script-${{ github.run_number }}.sh" >> $GITHUB_OUTPUT # In next jobs you can access this value via needs.<job_id>.outputs.any_file_name
 
       - name: 'Conditional: Only on success' # Шаг 8: Выполняется, когда предыдущие steps прошли успешно
         if: success() # Встроенная проверка статуса
@@ -162,7 +174,7 @@ jobs:
         run: Write-Host "Using PowerShell shell"
 
       - name: Upload build artifact # Шаг 17: Сохранить результат сборки для последующих jobs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4 # GitHub Action для загрузки артефактов
         with: # Параметры загрузки артефакта
           name: build-${{ matrix.os }}-${{ matrix.node }} # Уникальный артефакт для каждого matrix job
           path: ./dist # Каталог для архивирования
@@ -186,6 +198,18 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: '18'
+
+      - name: Cache dependencies # Шаг 2.5: Восстановить кэш зависимостей, созданный в any_job_name
+        uses: actions/cache@v4 # Action для кэширования файлов между runs
+        with: # Параметры кэширования
+          path: node_modules # Путь к директории для кэширования
+          key: ${{ runner.os }}-node-18-${{ hashFiles('**/package-lock.json') }} # Ключ соответствует кэшу из any_job_name для ubuntu-24.04
+          restore-keys: | # Альтернативные ключи для поиска
+            ${{ runner.os }}-node-18- # Ищет кэш для Node.js 18 на этой ОС
+            ${{ runner.os }}-node- # Ищет кэш для любой версии Node на этой ОС
+
+      - name: Install dependencies (using cache) # Шаг 2.6: Установить зависимости, используя кэш если доступен
+        run: npm install # npm install будет использовать кэшированные node_modules если они доступны
 
       - name: Get commit info # Шаг 3: Сохранение переменных в output step
         id: commit
@@ -289,11 +313,11 @@ jobs:
 
       - name: Retrieve any_job_name outputs # Шаг 2: Прочитать значения из job any_job_name
         run: |
-          echo "Build artifacts from: ${{ needs.any_job_name.outputs.artifact_id }}"
-          echo "Build status: ${{ needs.any_job_name.outputs.build_status }}"
-
-      - name: Download all artifacts # Шаг 3: Восстановить файлы, загруженные предыдущими jobs
-        uses: actions/download-artifact@v4
+          echo "Build artifacts from: ${{ needs.any_job_name.outputs.any_artifact_id }}" # Вывод ID артефакта, переданного из job any_job_name через outputs
+          echo "Build status: ${{ needs.any_job_name.outputs.build_status }}" # Вывод статуса сборки из upstream job
+          echo "Script file: ${{ needs.any_job_name.outputs.script_file }}" # Вывод пути к файлу скрипта, сгенерированному в any_job_name. Jobs, которые зависят от any_job_name через needs, могут читать строку.
+      - name: Download all artifacts # Шаг 3: Загрузить все артефакты из предыдущих jobs (in this case only from any_job_name)
+        uses: actions/download-artifact@v4 # Artifacts are available after needs: [any_job_name]
 
       - name: Deploy to ${{ github.event.inputs.deployment_target || 'staging' }} # Шаг 4: Основной блок команд деплоя
         run: |
