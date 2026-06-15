@@ -94,46 +94,47 @@ jobs:
           node-version: ${{ matrix.node }} # Версия из matrix
           registry-url: 'https://registry.npmjs.org' # Реестр npm по умолчанию
 
-      - name: Check if package.json exists # Шаг 2.5: Проверить наличие package.json
+      - name: Check if package.json exists # Шаг 3: Проверить наличие package.json
         id: check_package_json
-        run: echo "exists=$(test -f package.json && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+        shell: bash
+        run: echo "exists=$(test -f package.json && echo 'true' || echo 'false')" >> "$GITHUB_OUTPUT"
 
-      - name: Cache dependencies # Шаг 2.6: Кэширование зависимостей npm для ускорения сборки
+      - name: Cache dependencies # Шаг 4: Кэширование зависимостей npm для ускорения сборки. Кэш можно использовать в любом другом workflow или job, который использует тот же ключ кэша.
         if: steps.check_package_json.outputs.exists == 'true' # Только если package.json существует
         uses: actions/cache@v4 # Action для кэширования файлов между runs
         with: # Параметры кэширования
           path: node_modules # Путь к директории для кэширования (можно использовать ~/.npm для более компактного кэша)
-          key: ${{ runner.os }}-node-${{ matrix.node }}-${{ hashFiles('**/package-lock.json') }} # Уникальный ключ кэша на основе OS, версии Node и хешей package-lock.json 
+          key: ${{ runner.os }}-node-${{ matrix.node }}-${{ hashFiles('**/package-lock.json') }} # Уникальный ключ кэша на основе OS, версии Node и хешей package-lock.json Если package-lock.json изменится, будет создан новый кэш
           restore-keys: | # Альтернативные ключи для поиска, если точный ключ не найден
             ${{ runner.os }}-node-${{ matrix.node }}- # Ищет кэш для этой комбинации ОС и версии Node
             ${{ runner.os }}-node- # Ищет кэш для этой ОС с любой версией Node
 
-      - name: Install dependencies (using cache) # Шаг 2.7: Установить зависимости, используя кэшированные node_modules если доступны
+      - name: Install dependencies (using cache) # Шаг 5: Установить зависимости, используя кэшированные node_modules если доступны
         if: steps.check_package_json.outputs.exists == 'true' # Только если package.json существует
         run: npm install # npm install используется в CI/CD окружения, кэш ускорит установку если он доступен
 
-      - name: 'Example 1: Single-line pipe (|) - joins lines with &&' # Шаг 3: однострочный run с pipe (|) - всё в одной строке
+      - name: 'Example 1: Single-line pipe (|) - joins lines with &&' # Шаг 6: однострочный run с pipe (|) - всё в одной строке
         run: echo "Step 1 executed" | tee output.txt
 
-      - name: 'Example 2: Multi-line with pipe (|) - bash commands' # Шаг 4: многострочный run с pipe (|) - сохраняет переводы строк
+      - name: 'Example 2: Multi-line with pipe (|) - bash commands' # Шаг 7: многострочный run с pipe (|) - сохраняет переводы строк
         run: |
           echo "Installing dependencies..."
           echo "Line 1: Setting up environment"
           echo "Line 2: Checking versions"
           echo "Line 3: Done"
 
-      - name: 'Example 3: Folded style (>) - not common in workflows' # Шаг 5: folded style с > - объединяет строки пробелами
+      - name: 'Example 3: Folded style (>) - not common in workflows' # Шаг 8: folded style с > - объединяет строки пробелами
         run: >
           echo "This is a long command that spans"
           "multiple lines but gets joined"
           "with spaces instead of newlines"
 
-      - name: 'Example 4: Literal block (|-) - strips final newline' # Шаг 6: literal block с |- - удаляет завершающий перевод строки
+      - name: 'Example 4: Literal block (|-) - strips final newline' # Шаг 9: literal block с |- - удаляет завершающий перевод строки
         run: |-
           echo "First line"
           echo "Second line"
 
-      - name: Build and generate output # Шаг 7: Создать значения для downstream jobs
+      - name: Build and generate output # Шаг 10: Создать значения для downstream jobs
         id: build_step # Идентификатор step для outputs
         shell: bash # Явно указать shell для многострочного run
         run: |
@@ -142,44 +143,44 @@ jobs:
           echo "artifact_id=build-${{ github.run_number }}" >> $GITHUB_OUTPUT # Записываем step output в спецфайл $GITHUB_OUTPUT, чтобы значение стало доступно в следующих шагах/job как outputs
           echo "any_file_name=script-${{ github.run_number }}.sh" >> $GITHUB_OUTPUT # In next jobs you can access this value via needs.<job_id>.outputs.any_file_name
 
-      - name: 'Conditional: Only on success' # Шаг 8: Выполняется, когда предыдущие steps прошли успешно
+      - name: 'Conditional: Only on success' # Шаг 11: Выполняется, когда предыдущие steps прошли успешно
         if: success() # Встроенная проверка статуса
         run: echo "Build succeeded on ${{ matrix.os }}"
 
-      - name: 'Conditional: Only on failure' # Шаг 9: Выполняется после неуспешного step
+      - name: 'Conditional: Only on failure' # Шаг 12: Выполняется после неуспешного step
         if: failure() # Встроенная проверка на ошибку
         run: echo "Build failed, continuing anyway..."
         continue-on-error: true # Не проваливать весь job
 
-      - name: 'Conditional: Only on Ubuntu' # Шаг 10: Логика, специфичная для matrix
+      - name: 'Conditional: Only on Ubuntu' # Шаг 13: Логика, специфичная для matrix
         if: matrix.os == 'ubuntu-24.04' # Ограничить этот step только Ubuntu runner-ами
         run: echo "Running Ubuntu-specific commands"
 
-      - name: 'Conditional: Only on push' # Шаг 11: Поведение, зависящее от типа события
+      - name: 'Conditional: Only on push' # Шаг 14: Поведение, зависящее от типа события
         if: github.event_name == 'push' # Только для push-событий
         run: echo "This is a push event"
 
-      - name: 'Conditional: Branch contains pattern' # Шаг 12: Строковая функция в выражениях
+      - name: 'Conditional: Branch contains pattern' # Шаг 15: Строковая функция в выражениях
         if: contains(github.ref, 'release') # Совпадение с release ref
         run: echo "Building release branch"
 
-      - name: 'Step with continue-on-error: true' # Шаг 13: Пример step, который не блокирует workflow
+      - name: 'Step with continue-on-error: true' # Шаг 16: Пример step, который не блокирует workflow
         continue-on-error: true # Workflow продолжится после ошибки
         run: echo "This step can fail without failing the job"
 
-      - name: 'Working directory example' # Шаг 14: Переопределить рабочий каталог по умолчанию
+      - name: 'Working directory example' # Шаг 17: Переопределить рабочий каталог по умолчанию
         working-directory: . # Текущий корень репозитория
         run: 'echo "Current directory: $(pwd)"'
 
-      - name: 'Using bash shell explicitly' # Шаг 15: Явно использовать синтаксис bash
+      - name: 'Using bash shell explicitly' # Шаг 18: Явно использовать синтаксис bash
         shell: bash # Shell, используемый для выполнения run-команды
         run: echo "Using bash shell explicitly"
 
-      - name: 'Using PowerShell shell' # Шаг 16: Пример shell, ориентированного на Windows
+      - name: 'Using PowerShell shell' # Шаг 19: Пример shell, ориентированного на Windows
         shell: pwsh # PowerShell Core
         run: Write-Host "Using PowerShell shell"
 
-      - name: Upload build artifact # Шаг 17: Сохранить результат сборки для последующих jobs
+      - name: Upload build artifact # Шаг 20: Сохранить результат сборки для последующих jobs
         uses: actions/upload-artifact@v4 # GitHub Action для загрузки артефактов
         with: # Параметры загрузки артефакта
           name: build-${{ matrix.os }}-${{ matrix.node }} # Уникальный артефакт для каждого matrix job
@@ -205,11 +206,12 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Check if package.json exists # Шаг 2.5: Проверить наличие package.json
+      - name: Check if package.json exists # Шаг 3: Проверить наличие package.json
         id: check_package_json
-        run: echo "exists=$(test -f package.json && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+        shell: bash
+        run: echo "exists=$(test -f package.json && echo 'true' || echo 'false')" >> "$GITHUB_OUTPUT"
 
-      - name: Cache dependencies # Шаг 2.6: Восстановить кэш зависимостей, созданный в any_job_name
+      - name: Cache dependencies # Шаг 4: Восстановить кэш зависимостей, созданный в any_job_name
         if: steps.check_package_json.outputs.exists == 'true' # Только если package.json существует
         uses: actions/cache@v4 # Action для кэширования файлов между runs
         with: # Параметры кэширования
@@ -219,36 +221,36 @@ jobs:
             ${{ runner.os }}-node-18- # Ищет кэш для Node.js 18 на этой ОС
             ${{ runner.os }}-node- # Ищет кэш для любой версии Node на этой ОС
 
-      - name: Install dependencies (using cache) # Шаг 2.7: Установить зависимости, используя кэш если доступен
+      - name: Install dependencies (using cache) # Шаг 5: Установить зависимости, используя кэш если доступен
         if: steps.check_package_json.outputs.exists == 'true' # Только если package.json существует
         run: npm install # npm install будет использовать кэшированные node_modules если они доступны
 
-      - name: Get commit info # Шаг 3: Сохранение переменных в output step
+      - name: Get commit info # Шаг 6: Сохранение переменных в output step
         id: commit
         run: |
           echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
           echo "message=$(git log -1 --pretty=%B)" >> $GITHUB_OUTPUT
           echo "author=$(git log -1 --pretty=%an)" >> $GITHUB_OUTPUT
 
-      - name: Display commit info # Шаг 4: Использование outputs предыдущего step
+      - name: Display commit info # Шаг 7: Использование outputs предыдущего step
         run: |
           echo "Commit SHA: ${{ steps.commit.outputs.sha }}"
           echo "Author: ${{ steps.commit.outputs.author }}"
 
-      - name: 'Example: Multiple commands with set -e' # Шаг 5: Несколько команд с корректной обработкой ошибок
+      - name: 'Example: Multiple commands with set -e' # Шаг 8: Несколько команд с корректной обработкой ошибок
         run: |
           set -e
           echo "Step 1: Checking syntax"
           echo "Step 2: Running linter"
           echo "Step 3: Running tests"
 
-      - name: 'Example: Loop through items' # Шаг 6: Циклическая конструкция
+      - name: 'Example: Loop through items' # Шаг 9: Циклическая конструкция
         run: |
           for i in 1 2 3; do
             echo "Processing item $i"
           done
 
-      - name: 'Example: Conditional logic in script' # Шаг 7: Условная логика в run block
+      - name: 'Example: Conditional logic in script' # Шаг 10: Условная логика в run block
         run: |
           if [ "${{ github.event_name }}" == "pull_request" ]; then
             echo "Running PR checks..."
