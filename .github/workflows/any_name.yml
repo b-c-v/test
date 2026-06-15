@@ -48,8 +48,7 @@ on: # События, которые запускают этот workflow
       - custom_event
 
 env: # Глобальные переменные окружения, доступные всем jobs
-  NODE_VERSION: '18'
-  REGISTRY: ghcr.io
+  PORT: 8888 # можно переопределить в job или step
   IMAGE_NAME: ${{ github.repository }} # Имя образа на основе имени репозитория
 
 concurrency: # Предотвратить пересекающиеся запуски для одного и того же ref
@@ -73,7 +72,7 @@ jobs:
 
     env: # Переменные, доступные только в any_job_name
       BUILD_ENV: production
-      DEBUG: false
+      PORT: 1234 # Переопределить глобальный PORT для этого job
 
     outputs: # Значения, которые могут использовать другие jobs
       script_file: ${{ steps.build_step.outputs.any_file_name }} # Значение переменной any_file_name из шага build_step
@@ -93,6 +92,9 @@ jobs:
         with: # Параметры настройки Node.js
           node-version: ${{ matrix.node }} # Версия из matrix
           registry-url: 'https://registry.npmjs.org' # Реестр npm по умолчанию
+
+      - name: Print job PORT variable # Шаг 2.1: Вывести значение переменной PORT
+        run: echo "JOB_PORT=$PORT" # Вывод значения PORT, который был переопределён для этого job
 
       - name: Check if package.json exists # Шаг 3: Проверить наличие package.json
         id: check_package_json
@@ -193,13 +195,12 @@ jobs:
     runs-on: ubuntu-24.04 # Фиксированный Linux runner
     timeout-minutes: 15 # Более короткий лимит для быстрой обратной связи
 
-    # Переменные окружения уровня step могут переопределять глобальные env
-    env: # Переменные окружения, специфичные для job
-      CI: true # Указывает на неинтерактивное выполнение в CI
-
     steps: # Команды проверки для lint/test
       - name: Checkout repository # Шаг 1: Получение репозитория
         uses: actions/checkout@v5
+
+      - name: Print global PORT variable # Шаг 1.1: Вывести GLOBAL PORT
+        run: echo "GLOBAL_PORT=$PORT"
 
       - name: Setup Node.js 18 # Шаг 2: Установить Node.js версии 18
         uses: actions/setup-node@v5
@@ -271,6 +272,11 @@ jobs:
     steps: # Steps job-а security
       - name: Checkout repository # Шаг 1: Получить исходный код для сканирования
         uses: actions/checkout@v5
+
+      - name: Print step PORT variable # Шаг 1.1: Вывести PORT для этого step
+        run: echo 'STEP_PORT=$PORT'
+        env: # Переменные окружения, специфичные для step
+          PORT: 1111 # Переопределить PORT для этого step
 
       - name: Run security checks # Шаг 2: Заглушка для команд сканера
         run: echo "Performing security scanning..."
