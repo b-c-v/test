@@ -94,7 +94,12 @@ jobs:
           node-version: ${{ matrix.node }} # Версия из matrix
           registry-url: 'https://registry.npmjs.org' # Реестр npm по умолчанию
 
-      - name: Cache dependencies # Шаг 2.5: Кэширование зависимостей npm для ускорения сборки
+      - name: Check if package.json exists # Шаг 2.5: Проверить наличие package.json
+        id: check_package_json
+        run: echo "exists=$(test -f package.json && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+
+      - name: Cache dependencies # Шаг 2.6: Кэширование зависимостей npm для ускорения сборки
+        if: steps.check_package_json.outputs.exists == 'true' # Только если package.json существует
         uses: actions/cache@v4 # Action для кэширования файлов между runs
         with: # Параметры кэширования
           path: node_modules # Путь к директории для кэширования (можно использовать ~/.npm для более компактного кэша)
@@ -103,7 +108,8 @@ jobs:
             ${{ runner.os }}-node-${{ matrix.node }}- # Ищет кэш для этой комбинации ОС и версии Node
             ${{ runner.os }}-node- # Ищет кэш для этой ОС с любой версией Node
 
-      - name: Install dependencies (using cache) # Шаг 2.6: Установить зависимости, используя кэшированные node_modules если доступны
+      - name: Install dependencies (using cache) # Шаг 2.7: Установить зависимости, используя кэшированные node_modules если доступны
+        if: steps.check_package_json.outputs.exists == 'true' # Только если package.json существует
         run: npm install # npm install используется в CI/CD окружения, кэш ускорит установку если он доступен
 
       - name: 'Example 1: Single-line pipe (|) - joins lines with &&' # Шаг 3: однострочный run с pipe (|) - всё в одной строке
@@ -199,7 +205,12 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Cache dependencies # Шаг 2.5: Восстановить кэш зависимостей, созданный в any_job_name
+      - name: Check if package.json exists # Шаг 2.5: Проверить наличие package.json
+        id: check_package_json
+        run: echo "exists=$(test -f package.json && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
+
+      - name: Cache dependencies # Шаг 2.6: Восстановить кэш зависимостей, созданный в any_job_name
+        if: steps.check_package_json.outputs.exists == 'true' # Только если package.json существует
         uses: actions/cache@v4 # Action для кэширования файлов между runs
         with: # Параметры кэширования
           path: node_modules # Путь к директории для кэширования
@@ -208,7 +219,8 @@ jobs:
             ${{ runner.os }}-node-18- # Ищет кэш для Node.js 18 на этой ОС
             ${{ runner.os }}-node- # Ищет кэш для любой версии Node на этой ОС
 
-      - name: Install dependencies (using cache) # Шаг 2.6: Установить зависимости, используя кэш если доступен
+      - name: Install dependencies (using cache) # Шаг 2.7: Установить зависимости, используя кэш если доступен
+        if: steps.check_package_json.outputs.exists == 'true' # Только если package.json существует
         run: npm install # npm install будет использовать кэшированные node_modules если они доступны
 
       - name: Get commit info # Шаг 3: Сохранение переменных в output step
