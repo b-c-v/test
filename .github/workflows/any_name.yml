@@ -1,4 +1,5 @@
-# any_name.yml name: Any workflow name # Имя workflow, отображаемое в интерфейсе Actions
+# any_name.yml
+name: Any workflow name # Имя workflow, отображаемое в интерфейсе Actions
 on: # События, которые запускают этот workflow
   # Push-событие для определённых веток и путей
   push: # Запускать при push, если совпадают эти фильтры
@@ -64,7 +65,7 @@ jobs:
       # Установить fail-fast в false, чтобы выполнить все matrix jobs, даже если один из них завершится ошибкой
       fail-fast: false
       matrix: # Комбинации для сборки и тестирования
-        os: [ubuntu-24.04, macos-15, windows-2025] # Поддерживаемые операционные системы (see github-hosted-runners)
+        os: [ubuntu-24.04, macos-15, windows-2025] # Поддерживаемые операционные системы (see https://docs.github.com/en/actions/reference/runners/github-hosted-runners)
         node: ['18', '20'] # Поддерживаемые версии Node.js
         exclude: # Исключить определённые комбинации
           - os: macos-15
@@ -98,7 +99,9 @@ jobs:
           echo "JOB_PORT=$PORT" # Вывод значения PORT, который был переопределён для этого job
           echo "JOB_PORT=${{ env.PORT }}" # Альтернативный синтаксис для доступа к переменной окружения
           echo 'JOB_PORT=$PORT' # Нужно использовать "", чтобы переменная была интерполирована в bash
-          echo 'JOB_PORT=${{ env.PORT }}'
+          echo 'JOB_PORT=${{ env.PORT }}' # В этом случае переменная будет интерполирована и выведет значения PORT
+          echo 'JOB_ID=${{ env.GITHUB_JOB }}' # Вывод значения default environment variable (see https://docs.github.com/en/actions/reference/workflows-and-actions/variables)
+          echo "MY_SECRET_VAR=${{ secrets.ANY_SECRET_VAR != '' && 'set' || 'unset' }}" # Использование секрета. Переменную с таким именем необходимо предварительно сохранить в Settings ==> Secrets and variables ==> Actions. Выводит 'set' если секрет определён, и 'unset' если он не задан.
 
       - name: Check if package.json exists # Шаг 3: Проверить наличие package.json
         id: check_package_json
