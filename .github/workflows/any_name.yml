@@ -94,7 +94,11 @@ jobs:
           registry-url: 'https://registry.npmjs.org' # Реестр npm по умолчанию
 
       - name: Print job PORT variable # Шаг 2.1: Вывести значение переменной PORT
-        run: echo "JOB_PORT=$PORT" # Вывод значения PORT, который был переопределён для этого job
+        run: |
+          echo "JOB_PORT=$PORT" # Вывод значения PORT, который был переопределён для этого job
+          echo "JOB_PORT=${{ env.PORT }}" # Альтернативный синтаксис для доступа к переменной окружения
+          echo 'JOB_PORT=$PORT' # Нужно использовать "", чтобы переменная была интерполирована в bash
+          echo 'JOB_PORT=${{ env.PORT }}'
 
       - name: Check if package.json exists # Шаг 3: Проверить наличие package.json
         id: check_package_json
@@ -200,7 +204,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Print global PORT variable # Шаг 1.1: Вывести GLOBAL PORT
-        run: echo "GLOBAL_PORT=$PORT"
+        run: echo "GLOBAL_PORT=$PORT" # Нужно использовать "", чтобы переменная была интерполирована в bash. Если использовать '', будет напечатано буквально GLOBAL_PORT=$PORT, а не его значение.
 
       - name: Setup Node.js 18 # Шаг 2: Установить Node.js версии 18
         uses: actions/setup-node@v5
@@ -274,7 +278,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Print step PORT variable # Шаг 1.1: Вывести PORT для этого step
-        run: echo 'STEP_PORT=$PORT'
+        run: echo "STEP_PORT=$PORT" # Нужно использовать "", чтобы переменная была интерполирована в bash. Если использовать '', будет напечатано буквально GLOBAL_PORT=$PORT, а не его значение.
         env: # Переменные окружения, специфичные для step
           PORT: 1111 # Переопределить PORT для этого step
 
