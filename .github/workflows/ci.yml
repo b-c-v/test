@@ -8,7 +8,7 @@ jobs:
   any-call-reusable-build:
     uses: b-c-v/test/.github/workflows/reusable-build.yml@main
     with:
-      node_version: "20"
-      # environment: "production"  # optional - omit to use the default ("staging")
+      node_version_var: "20"
+      # environment_var: "production"  # optional - omit to use the default ("staging")
     secrets:
-      npm_token: ${{ secrets.NPM_TOKEN }}
+      npm_token_var: ${{ secrets.NPM_TOKEN }}
