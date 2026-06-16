@@ -328,17 +328,17 @@ jobs:
           echo "outcome: ${{ steps.failed_step_id.outcome }}" # 'failure'
           echo "conclusion: ${{ steps.failed_step_id.conclusion }}" # 'failure'
 
-      - name: 'Step 7 - Run on any failure' # Выполняется после неуспешного step (только если без continue-on-error: true)
+      - name: 'Step 8 - Run on any failure' # Выполняется после неуспешного step (только если без continue-on-error: true)
         if: failure() # Встроенная проверка на ошибку
         run: echo "Build failed, continuing anyway..."
 
-      - name: 'Step 8 - Run on specific step failure using outcome' # Выполняется после неуспешного step, с проверкой конкретного шага (только если без continue-on-error: true)
-        if: failure() && steps.failed_step_id.outcome == 'failure' # Проверить, что ошибка произошла именно в шаге failed_step_id
-        run: echo "Build for step failed_step_id failed, continuing anyway..."
+      - name: 'Step 9 - Run on specific step failure using outcome' # Выполняется после неуспешного step, с проверкой конкретного шага (только для шага без continue-on-error: true)
+        if: failure() && steps.continue_on_error_step_id.outcome == 'failure' # Проверить, что ошибка произошла именно в шаге continue_on_error_step_id
+        run: echo "Build for step continue_on_error_step_id failed (checked via outcome)..."
 
-      - name: 'Step 9 - Run on specific step failure using conclusion' # conclusion учитывает continue-on-error 
-        if: failure() && steps.failed_step_id.conclusion == 'failure' # Для шага без continue-on-error conclusion и outcome совпадают
-        run: echo "Build for step failed_step_id failed (checked via conclusion)..."
+      - name: 'Step 10 - Run on specific step failure using conclusion' 
+        if: failure() && steps.continue_on_error_step_id.conclusion == 'success' # success потому что conclusion учитывает continue-on-error 
+        run: echo "Build for step continue_on_error_step_id failed (checked via conclusion)..."
 
   deploy: # Зависит от any_job_name и security
     name: Job 5 - Deploy to ${{ github.event.inputs.deployment_target || 'staging' }} # Динамическое имя целевого окружения
