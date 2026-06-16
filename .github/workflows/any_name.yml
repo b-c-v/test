@@ -61,9 +61,8 @@ jobs:
     name: Job 1 - Build on ${{ matrix.os }} - Node ${{ matrix.node }} # Понятное имя job в интерфейсе
     runs-on: ${{ matrix.os }} # Образ runner берётся из matrix
     timeout-minutes: 30 # Жёсткий лимит времени для этого job
-    strategy: # Настройка поведения matrix-выполнения
-      # Установить fail-fast в false, чтобы выполнить все matrix jobs, даже если один из них завершится ошибкой
-      fail-fast: false
+    strategy: # Настройка поведения matrix-выполнения      
+      fail-fast: false # Выполнить все matrix jobs, даже если один из них завершится ошибкой
       matrix: # Комбинации для сборки и тестирования
         os: [ubuntu-24.04, macos-15, windows-2025] # Поддерживаемые операционные системы (see https://docs.github.com/en/actions/reference/runners/github-hosted-runners)
         node: ['18', '20'] # Поддерживаемые версии Node.js
@@ -155,14 +154,6 @@ jobs:
       - name: "Step 12 - Conditional: Only on success" # Выполняется, когда предыдущие steps прошли успешно
         if: success() # Встроенная проверка статуса
         run: echo "Build succeeded on ${{ matrix.os }}"
-
-      - name: 'Step 13 - Conditional: Only on failure' # Выполняется после неуспешного step
-        if: failure() # Встроенная проверка на ошибку
-        run: echo "Build failed, continuing anyway..."
-
-      - name: 'Step 14 - Conditional: Only on failure ' # Выполняется после неуспешного step, с проверкой конкретного шага
-        if: failure() && steps.build_step_id.outcome == 'failure' # Проверить, что ошибка произошла именно в шаге build_step_id
-        run: echo "Build failed, continuing anyway..."
 
       - name: 'Step 15 - Conditional: Only on Ubuntu' # Логика, специфичная для matrix
         if: matrix.os == 'ubuntu-24.04' # Ограничить этот step только Ubuntu runner-ами
@@ -318,12 +309,17 @@ jobs:
       - name: 'Step 3 - Example: Using secrets (safely)' # Демонстрирует использование секрета без вывода его значения
         run: echo "Using secret token (length=${{ secrets.GITHUB_TOKEN != '' && 'set' || 'unset' }})"
 
-      - name: 'Step 4 - Example: Multiline with escaped characters' # Пример многострочного скрипта
-        run: |
-          echo "Multi-line example with special characters:"
-          echo " - Item 1"
-          echo " - Item 2"
-          echo " - Item 3"
+      - name: 'Step 4 - Failed step'
+        id: failed_step_id
+        run: exit 1 # Завершить с ошибкой
+
+      - name: 'Step 5 - Conditional: Only on failure' # Выполняется после неуспешного step
+        if: failure() # Встроенная проверка на ошибку
+        run: echo "Build failed, continuing anyway..."
+
+      - name: 'Step 6 - Conditional: Only on failure ' # Выполняется после неуспешного step, с проверкой конкретного шага
+        if: failure() && steps.failed_step_id.outcome == 'failure' # Проверить, что ошибка произошла именно в шаге failed_step_id
+        run: echo "Build failed, continuing anyway..."
 
   deploy: # Зависит от any_job_name и security
     name: Job 5 - Deploy to ${{ github.event.inputs.deployment_target || 'staging' }} # Динамическое имя целевого окружения
