@@ -65,6 +65,9 @@ jobs:
       matrix: # Комбинации для сборки и тестирования
         any_name_os: [ubuntu-24.04, macos-15, windows-2025] # Поддерживаемые операционные системы (see https://docs.github.com/en/actions/reference/runners/github-hosted-runners)
         any_node_version: ['18', '20'] # Поддерживаемые версии Node.js
+        include: # Включить дополнительные комбинации, которые не входят в декартово произведение any_name_os и any_node_version
+          - any_name_os: ubuntu-22.04
+            any_node_version: '16' # Дополнительная комбинация для тестирования Node.js 16 на Ubuntu
         exclude: # Исключить определённые комбинации
           - any_name_os: macos-15
             any_node_version: '16'
