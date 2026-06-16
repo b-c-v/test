@@ -94,7 +94,7 @@ jobs:
           node-version: ${{ matrix.node }} # Версия из matrix
           registry-url: "https://registry.npmjs.org" # Реестр npm по умолчанию
 
-      - name: Print job PORT variable # Шаг 2.1: Вывести значение переменной PORT
+      - name: Print job PORT variable # Шаг 3: Вывести значение переменной PORT
         run: |
           echo "JOB_PORT=$PORT" # Вывод значения PORT, который был переопределён для этого job
           echo "JOB_PORT=${{ env.PORT }}" # Альтернативный синтаксис для доступа к переменной окружения
@@ -102,12 +102,12 @@ jobs:
           echo 'JOB_PORT=${{ env.PORT }}' # В этом случае переменная будет интерполирована и выведет значения PORT
           echo 'JOB_ID=${{ env.GITHUB_JOB }}' # Вывод значения default environment variable (see https://docs.github.com/en/actions/reference/workflows-and-actions/variables)
 
-      - name: Check if package.json exists # Шаг 3: Проверить наличие package.json
+      - name: Check if package.json exists # Шаг 4: Проверить наличие package.json
         id: check_package_json_id # Идентификатор шага для использования в if условии в следующих steps
         shell: bash
         run: echo "exists_var=$(test -f package.json && echo 'true' || echo 'false')" >> "$GITHUB_OUTPUT"
 
-      - name: Cache dependencies # Шаг 4: Кэширование зависимостей npm для ускорения сборки. Кэш можно использовать в любом другом workflow или job, который использует тот же ключ кэша.
+      - name: Cache dependencies # Шаг 5: Кэширование зависимостей npm для ускорения сборки. Кэш можно использовать в любом другом workflow или job, который использует тот же ключ кэша.
         if: steps.check_package_json_id.outputs.exists_var == 'true' # Только если package.json существует. check_package_json_id - это id предыдущего шага, outputs.exists_var - это значение, которое было записано в $GITHUB_OUTPUT в том шаге.
         uses: actions/cache@v4 # Action для кэширования файлов между runs
         with: # Параметры кэширования
@@ -117,32 +117,32 @@ jobs:
             ${{ runner.os }}-node-${{ matrix.node }}- # Ищет кэш для этой комбинации ОС и версии Node
             ${{ runner.os }}-node- # Ищет кэш для этой ОС с любой версией Node
 
-      - name: Install dependencies (using cache) # Шаг 5: Установить зависимости, используя кэшированные node_modules если доступны
+      - name: Install dependencies (using cache) # Шаг 6: Установить зависимости, используя кэшированные node_modules если доступны
         if: steps.check_package_json_id.outputs.exists_var == 'true'
         run: npm install # npm install используется в CI/CD окружения, кэш ускорит установку если он доступен
 
-      - name: "Example 1: Single-line pipe (|) - joins lines with &&" # Шаг 6: однострочный run с pipe (|) - всё в одной строке
+      - name: "Example 1: Single-line pipe (|) - joins lines with &&" # Шаг 7: однострочный run с pipe (|) - всё в одной строке
         run: echo "Step 1 executed" | tee output.txt
 
-      - name: "Example 2: Multi-line with pipe (|) - bash commands" # Шаг 7: многострочный run с pipe (|) - сохраняет переводы строк
+      - name: "Example 2: Multi-line with pipe (|) - bash commands" # Шаг 8: многострочный run с pipe (|) - сохраняет переводы строк
         run: |
           echo "Installing dependencies..."
           echo "Line 1: Setting up environment"
           echo "Line 2: Checking versions"
           echo "Line 3: Done"
 
-      - name: 'Example 3: Folded style (>) - not common in workflows' # Шаг 8: folded style с > - объединяет строки пробелами
+      - name: 'Example 3: Folded style (>) - not common in workflows' # Шаг 9: folded style с > - объединяет строки пробелами
         run: >
           echo "This is a long command that spans"
           "multiple lines but gets joined"
           "with spaces instead of newlines"
 
-      - name: 'Example 4: Literal block (|-) - strips final newline' # Шаг 9: literal block с |- - удаляет завершающий перевод строки
+      - name: 'Example 4: Literal block (|-) - strips final newline' # Шаг 10: literal block с |- - удаляет завершающий перевод строки
         run: |-
           echo "First line"
           echo "Second line"
 
-      - name: Build and generate output # Шаг 10: Создать значения для downstream jobs
+      - name: Build and generate output # Шаг 11: Создать значения для downstream jobs
         id: build_step_id # Идентификатор step для outputs
         shell: bash # Явно указать shell для многострочного run
         run: |
@@ -151,44 +151,49 @@ jobs:
           echo "artifact_id_var=build-${{ github.run_number }}" >> $GITHUB_OUTPUT # Записываем step output в спецфайл $GITHUB_OUTPUT, чтобы значение стало доступно в следующих шагах/job как outputs
           echo "any_file_name_var=script-${{ github.run_number }}.sh" >> $GITHUB_OUTPUT # In next jobs you can access this value via needs.<job_id>.outputs.any_file_name_var
 
-      - name: "Conditional: Only on success" # Шаг 11: Выполняется, когда предыдущие steps прошли успешно
+      - name: "Conditional: Only on success" # Шаг 12: Выполняется, когда предыдущие steps прошли успешно
         if: success() # Встроенная проверка статуса
         run: echo "Build succeeded on ${{ matrix.os }}"
 
-      - name: 'Conditional: Only on failure' # Шаг 12: Выполняется после неуспешного step
+      - name: 'Conditional: Only on failure' # Шаг 13: Выполняется после неуспешного step
         if: failure() # Встроенная проверка на ошибку
         run: echo "Build failed, continuing anyway..."
-        continue-on-error: true # Не проваливать весь job
+        continue-on-error: true # Не завершать весь job с ошибкой
 
-      - name: 'Conditional: Only on Ubuntu' # Шаг 13: Логика, специфичная для matrix
+      - name: 'Conditional: Only on failure ' # Шаг 14: Выполняется после неуспешного step, с проверкой конкретного шага
+        if: failure() && steps.build_step_id.outcome == 'failure' # Проверить, что ошибка произошла именно в шаге build_step_id
+        run: echo "Build failed, continuing anyway..."
+        continue-on-error: true # Не завершать весь job с ошибкой
+
+      - name: 'Conditional: Only on Ubuntu' # Шаг 15: Логика, специфичная для matrix
         if: matrix.os == 'ubuntu-24.04' # Ограничить этот step только Ubuntu runner-ами
         run: echo "Running Ubuntu-specific commands"
 
-      - name: 'Conditional: Only on push' # Шаг 14: Поведение, зависящее от типа события
+      - name: 'Conditional: Only on push' # Шаг 16: Поведение, зависящее от типа события
         if: github.event_name == 'push' # Только для push-событий
         run: echo "This is a push event"
 
-      - name: 'Conditional: Branch contains pattern' # Шаг 15: Строковая функция в выражениях
+      - name: 'Conditional: Branch contains pattern' # Шаг 17: Строковая функция в выражениях
         if: contains(github.ref, 'release') # Совпадение с release ref
         run: echo "Building release branch"
 
-      - name: 'Step with continue-on-error: true' # Шаг 16: Пример step, который не блокирует workflow
+      - name: 'Step with continue-on-error: true' # Шаг 18: Пример step, который не блокирует workflow
         continue-on-error: true # Workflow продолжится после ошибки
         run: echo "This step can fail without failing the job"
 
-      - name: 'Working directory example' # Шаг 17: Переопределить рабочий каталог по умолчанию
+      - name: 'Working directory example' # Шаг 19: Переопределить рабочий каталог по умолчанию
         working-directory: . # Текущий корень репозитория
         run: 'echo "Current directory: $(pwd)"'
 
-      - name: 'Using bash shell explicitly' # Шаг 18: Явно использовать синтаксис bash
+      - name: 'Using bash shell explicitly' # Шаг 20: Явно использовать синтаксис bash
         shell: bash # Shell, используемый для выполнения run-команды
         run: echo "Using bash shell explicitly"
 
-      - name: 'Using PowerShell shell' # Шаг 19: Пример shell, ориентированного на Windows
+      - name: 'Using PowerShell shell' # Шаг 21: Пример shell, ориентированного на Windows
         shell: pwsh # PowerShell Core
         run: Write-Host "Using PowerShell shell"
 
-      - name: Upload build artifact # Шаг 20: Сохранить результат сборки для последующих jobs
+      - name: Upload build artifact # Шаг 22: Сохранить результат сборки для последующих jobs
         uses: actions/upload-artifact@v4 # GitHub Action для загрузки артефактов
         with: # Параметры загрузки артефакта
           name: build-${{ matrix.os }}-${{ matrix.node }} # Уникальный артефакт для каждого matrix job
@@ -205,20 +210,20 @@ jobs:
       - name: Checkout repository # Шаг 1: Получение репозитория
         uses: actions/checkout@v5
 
-      - name: Print global PORT variable # Шаг 1.1: Вывести GLOBAL PORT
+      - name: Print global PORT variable # Шаг 2: Вывести GLOBAL PORT
         run: echo "GLOBAL_PORT=$PORT" # Нужно использовать "", чтобы переменная была интерполирована в bash. Если использовать '', будет напечатано буквально GLOBAL_PORT=$PORT, а не его значение.
 
-      - name: Setup Node.js 18 # Шаг 2: Установить Node.js версии 18
+      - name: Setup Node.js 18 # Шаг 3: Установить Node.js версии 18
         uses: actions/setup-node@v5
         with:
           node-version: "18"
 
-      - name: Check if package.json exists # Шаг 3: Проверить наличие package.json
+      - name: Check if package.json exists # Шаг 4: Проверить наличие package.json
         id: check_package_json_id
         shell: bash
         run: echo "exists_var=$(test -f package.json && echo 'true' || echo 'false')" >> "$GITHUB_OUTPUT"
 
-      - name: Cache dependencies # Шаг 4: Восстановить кэш зависимостей, созданный в any_job_name
+      - name: Cache dependencies # Шаг 5: Восстановить кэш зависимостей, созданный в any_job_name
         if: steps.check_package_json_id.outputs.exists_var == 'true' # Только если package.json существует
         uses: actions/cache@v4 # Action для кэширования файлов между runs
         with: # Параметры кэширования
@@ -228,36 +233,36 @@ jobs:
             ${{ runner.os }}-node-18- # Ищет кэш для Node.js 18 на этой ОС
             ${{ runner.os }}-node- # Ищет кэш для любой версии Node на этой ОС
 
-      - name: Install dependencies (using cache) # Шаг 5: Установить зависимости, используя кэш если доступен
+      - name: Install dependencies (using cache) # Шаг 6: Установить зависимости, используя кэш если доступен
         if: steps.check_package_json_id.outputs.exists_var == 'true' # Только если package.json существует
         run: npm install # npm install будет использовать кэшированные node_modules если они доступны
 
-      - name: Get commit info # Шаг 6: Сохранение переменных в output step
+      - name: Get commit info # Шаг 7: Сохранение переменных в output step
         id: commit_id
         run: |
           echo "sha_var=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
           echo "message_var=$(git log -1 --pretty=%B)" >> $GITHUB_OUTPUT
           echo "author_var=$(git log -1 --pretty=%an)" >> $GITHUB_OUTPUT
 
-      - name: Display commit info # Шаг 7: Использование outputs предыдущего step
+      - name: Display commit info # Шаг 8: Использование outputs предыдущего step
         run: |
           echo "Commit SHA: ${{ steps.commit_id.outputs.sha_var }}"
           echo "Author: ${{ steps.commit_id.outputs.author_var }}"
 
-      - name: "Example: Multiple commands with set -e" # Шаг 8: Несколько команд с корректной обработкой ошибок
+      - name: "Example: Multiple commands with set -e" # Шаг 9: Несколько команд с корректной обработкой ошибок
         run: |
           set -e
           echo "Step 1: Checking syntax"
           echo "Step 2: Running linter"
           echo "Step 3: Running tests"
 
-      - name: 'Example: Loop through items' # Шаг 9: Циклическая конструкция
+      - name: 'Example: Loop through items' # Шаг 10: Циклическая конструкция
         run: |
           for i in 1 2 3; do
             echo "Processing item $i"
           done
 
-      - name: 'Example: Conditional logic in script' # Шаг 10: Условная логика в run block
+      - name: 'Example: Conditional logic in script' # Шаг 11: Условная логика в run block
         run: |
           if [ "${{ github.event_name }}" == "pull_request" ]; then
             echo "Running PR checks..."
@@ -279,22 +284,22 @@ jobs:
       - name: Checkout repository # Шаг 1: Получить исходный код для сканирования
         uses: actions/checkout@v5
 
-      - name: Print step PORT variable # Шаг 1.1: Вывести PORT для этого step
+      - name: Print step PORT variable # Шаг 2: Вывести PORT для этого step
         run: echo "STEP_PORT=$PORT" # Нужно использовать "", чтобы переменная была интерполирована в bash. Если использовать '', будет напечатано буквально GLOBAL_PORT=$PORT, а не его значение.
         env: # Переменные окружения, специфичные для step
           PORT: 1111 # Переопределить PORT для этого step
 
-      - name: Run security checks # Шаг 2: Заглушка для команд сканера
-        run: echo "Performing security scanning..."
+      - name: Print GitHub context # Шаг 3: Вывести весь GitHub context
+        run: echo " ${{github }}" # GitHub context - это набор переменных, которые предоставляют информацию о событии, репозитории, коммите и других аспектах текущего workflow run.
 
-      - name: 'Example: Variable substitution' # Шаг 3: Вывести выбранные значения GitHub context
+      - name: 'Example: Variable substitution' # Шаг 4: Вывести выбранные значения GitHub context
         run: |
-          echo "Repository: ${{ github.repository }}"
-          echo "Ref: ${{ github.ref }}"
-          echo "SHA: ${{ github.sha }}"
-          echo "Actor: ${{ github.actor }}"
-          echo "Run ID: ${{ github.run_id }}"
-          echo "Run Number: ${{ github.run_number }}"
+          echo "Repository: ${{ github.repository }}" # Вывод имени репозитория
+          echo "Ref: ${{ github.ref }}" # Вывод git ref, который вызвал workflow
+          echo "SHA: ${{ github.sha }}" # Вывод SHA коммита, который вызвал workflow
+          echo "Actor: ${{ github.actor }}" # Вывод пользователя, который инициировал workflow
+          echo "Run ID: ${{ github.run_id }}" # Вывод уникального идентификатора запуска workflow
+          echo "Run Number: ${{ github.run_number }}" # Вывод номера запуска workflow
 
   docs: # Job 4: зависит от других jobs
     name: Generate Documentation # Сгенерировать или опубликовать документацию
@@ -348,20 +353,34 @@ jobs:
       - name: Download all artifacts # Шаг 4: Загрузить все артефакты из предыдущих jobs (in this case only from any_job_name)
         uses: actions/download-artifact@v4 # Artifacts are available after needs: [any_job_name]
 
-      - name: Deploy to ${{ github.event.inputs.deployment_target || 'staging' }} # Шаг 4: Основной блок команд деплоя
+      - name: Deploy to ${{ github.event.inputs.deployment_target || 'staging' }} # Шаг 5: Основной блок команд деплоя
         run: |
           echo "Deploying to environment: ${{ github.event.inputs.deployment_target || 'staging' }}"
           echo "Debug mode: ${{ github.event.inputs.debug_mode == true && 'enabled' || 'disabled' }}"
 
-      - name: 'Production deploy (manual only)' # Шаг 5: Дополнительное предупреждение для production
+      - name: 'Production deploy (manual only)' # Шаг 6: Дополнительное предупреждение для production
         if: github.event.inputs.deployment_target == 'production' # Запускать только для production
         run: 'echo "WARNING: Deploying to production!"'
 
-      - name: 'Example: Context functions' # Шаг 6: Использование функций GitHub context
+      - name: 'Example: Context functions' # Шаг 7: Использование функций GitHub context
         run: |
           echo "Contains 'main': ${{ contains(github.ref, 'main') }}"
           echo "StartsWith refs/: ${{ startsWith(github.ref, 'refs/') }}"
           echo "Format: ${{ format('Branch: {0}', github.ref) }}"
+  report:
+    name: Report on failures # Job для отчёта о неудачных job-ах
+    runs-on: ubuntu-24.04
+    needs: [any_job_name, lint, security, docs, deploy] # Дождаться всех основных jobs
+    if: failure()
+    steps: # Steps для отчёта о неудачных job-ах
+      - name: Report failed jobs # Шаг 1: Вывести список неудачных jobs
+        run: |
+          echo "Failed jobs in this workflow run:"
+          for job in ${{ toJson(needs) }}; do
+            if [ "${{ needs[job].result }}" == "failure" ]; then
+              echo " - $job"
+            fi
+          done
 
   status: # Job 6: финальный job отчётности и очистки
     name: Workflow Status # Сводка по результату pipeline
@@ -385,6 +404,7 @@ jobs:
       - name: 'Example: Array/JSON in run command' # Шаг 4: Прочитать агрегированные результаты из зависимостей
         run: |
           echo "Job results:"
-          echo " any_job_name: ${{ needs.any_job_name.result }}"
+          echo " any_job_name: ${{ needs.any_job_name.result }}" # Вывод статуса job-а any_job_name, который является зависимостью для этого job-а
           echo " lint: ${{ needs.lint.result }}"
           echo " security: ${{ needs.security.result }}"
+          echo " docs: ${{ needs.docs.result }}"
