@@ -110,16 +110,17 @@ jobs:
       - name: Step 5 - Cache dependencies # Кэширование зависимостей npm для ускорения сборки. Кэш можно использовать в любом другом workflow или job, который использует тот же ключ кэша.
         if: steps.check_package_json_id.outputs.exists_var == 'true' # Только если package.json существует. check_package_json_id - это id предыдущего шага, outputs.exists_var - это значение, которое было записано в $GITHUB_OUTPUT в том шаге.
         uses: actions/cache@v4 # Action для кэширования файлов между runs
+        id: cache_id # Идентификатор шага кэширования, чтобы проверить его результат в следующих шагах
         with: # Параметры кэширования
-          path: node_modules # Путь к директории для кэширования (можно использовать ~/.npm для более компактного кэша)
+          path: ~/.npm # Путь к директории для кэширования
           key: ${{ runner.os }}-node-${{ matrix.node }}-${{ hashFiles('**/package-lock.json') }} # Уникальный ключ кэша на основе OS, версии Node и хешей package-lock.json Если package-lock.json изменится, будет создан новый кэш
           restore-keys: | # Альтернативные ключи для поиска, если точный ключ не найден
             ${{ runner.os }}-node-${{ matrix.node }}- # Ищет кэш для этой комбинации ОС и версии Node
             ${{ runner.os }}-node- # Ищет кэш для этой ОС с любой версией Node
 
-      - name: Step 6 - Install dependencies (using cache) # Установить зависимости, используя кэшированные node_modules если доступны
-        if: steps.check_package_json_id.outputs.exists_var == 'true'
-        run: npm install # npm install используется в CI/CD окружения, кэш ускорит установку если он доступен
+      - name: Step 6 - Install dependencies (using cache) # Установить зависимости, если кэш отсутствует
+        if: steps.check_package_json_id.outputs.exists_var == 'true' && steps.cache_id.outputs.cache-hit != 'true' # Только если package.json существует и кэш не был найден (cache-hit - это специальный output, который возвращает boolean, указывая, был ли найден кэш)
+        run: npm install
 
       - name: "Step 7 - Example 1: Single-line pipe (|) - joins lines with &&" # однострочный run с pipe (|) - всё в одной строке
         run: echo "Step 1 executed" | tee output.txt
@@ -158,12 +159,10 @@ jobs:
       - name: 'Step 13 - Conditional: Only on failure' # Выполняется после неуспешного step
         if: failure() # Встроенная проверка на ошибку
         run: echo "Build failed, continuing anyway..."
-        continue-on-error: true # Не завершать весь job с ошибкой
 
       - name: 'Step 14 - Conditional: Only on failure ' # Выполняется после неуспешного step, с проверкой конкретного шага
         if: failure() && steps.build_step_id.outcome == 'failure' # Проверить, что ошибка произошла именно в шаге build_step_id
         run: echo "Build failed, continuing anyway..."
-        continue-on-error: true # Не завершать весь job с ошибкой
 
       - name: 'Step 15 - Conditional: Only on Ubuntu' # Логика, специфичная для matrix
         if: matrix.os == 'ubuntu-24.04' # Ограничить этот step только Ubuntu runner-ами
@@ -179,7 +178,7 @@ jobs:
 
       - name: 'Step 18 - Step with continue-on-error: true' # Пример step, который не блокирует workflow
         continue-on-error: true # Workflow продолжится после ошибки
-        run: echo "This step can fail without failing the job"
+        run: "exit 1"
 
       - name: 'Step 19 - Working directory example' # Переопределить рабочий каталог по умолчанию
         working-directory: . # Текущий корень репозитория
@@ -227,13 +226,13 @@ jobs:
         if: steps.check_package_json_id.outputs.exists_var == 'true' # Только если package.json существует
         uses: actions/cache@v4 # Action для кэширования файлов между runs
         with: # Параметры кэширования
-          path: node_modules # Путь к директории для кэширования
+          path: ~/.npm # Путь к директории для кэширования
           key: ${{ runner.os }}-node-18-${{ hashFiles('**/package-lock.json') }} # Ключ соответствует кэшу из any_job_name для ubuntu-24.04
           restore-keys: | # Альтернативные ключи для поиска
             ${{ runner.os }}-node-18- # Ищет кэш для Node.js 18 на этой ОС
             ${{ runner.os }}-node- # Ищет кэш для любой версии Node на этой ОС
 
-      - name: Step 6 - Install dependencies (using cache) # Установить зависимости, используя кэш если доступен
+      - name: Step 6 - Install dependencies (using cache) # Установить зависимости, используя кэшированный npm-кэш если доступен
         if: steps.check_package_json_id.outputs.exists_var == 'true' # Только если package.json существует
         run: npm install # npm install будет использовать кэшированные node_modules если они доступны
 
