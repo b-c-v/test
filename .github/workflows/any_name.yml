@@ -317,9 +317,9 @@ jobs:
         if: failure() # Встроенная проверка на ошибку
         run: echo "Build failed, continuing anyway..."
 
-      - name: 'Step 6 - Conditional: Only on failure ' # Выполняется после неуспешного step, с проверкой конкретного шага
+      - name: 'Step 6 - Conditional: Only on failure of dedicated step' # Выполняется после неуспешного step, с проверкой конкретного шага
         if: failure() && steps.failed_step_id.outcome == 'failure' # Проверить, что ошибка произошла именно в шаге failed_step_id
-        run: echo "Build failed, continuing anyway..."
+        run: echo "Build for step failed_step_id failed, continuing anyway..."
 
   deploy: # Зависит от any_job_name и security
     name: Job 5 - Deploy to ${{ github.event.inputs.deployment_target || 'staging' }} # Динамическое имя целевого окружения
@@ -362,6 +362,7 @@ jobs:
           echo "Contains 'main': ${{ contains(github.ref, 'main') }}"
           echo "StartsWith refs/: ${{ startsWith(github.ref, 'refs/') }}"
           echo "Format: ${{ format('Branch: {0}', github.ref) }}"
+          
   report:
     name: Job 6 - Report on failures # Job для отчёта о неудачных job-ах
     runs-on: ubuntu-24.04
@@ -371,11 +372,12 @@ jobs:
       - name: Step 1 - Report failed jobs # Вывести список неудачных jobs
         run: |
           echo "Failed jobs in this workflow run:"
-          for job in ${{ toJson(needs) }}; do
-            if [ "${{ needs[job].result }}" == "failure" ]; then
-              echo " - $job"
-            fi
-          done
+          failed_jobs=$(echo '${{ toJson(needs) }}' | jq -r 'to_entries[] | select(.value.result == "failure") | .key')
+          if [ -z "$failed_jobs" ]; then
+            echo " - none"
+          else
+            echo "$failed_jobs" | sed 's/^/ - /'
+          fi
 
   status: # Финальный job отчётности и очистки
     name: Job 7 - Workflow Status # Сводка по результату pipeline
