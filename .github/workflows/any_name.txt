@@ -82,7 +82,7 @@ jobs:
       any_artifact_id_var: ${{ steps.build_step_id.outputs.artifact_id_var }} # Идентификатор артефакта из build_step
       build_status_var: ${{ job.status }} # Итоговый статус job any_job_name
 
-    steps: # Последовательность шагов, которые будут выполнены параллельно для каждой комбинации OS и версии Node.js (3x2=6) в matrix
+    steps: # Последовательность шагов, которые будут выполнены параллельно для каждой комбинации OS и версии Node.js (3x2+1=7) в matrix
       - name: Step 1 - Checkout repository #  получить код из репозитория
         uses: actions/checkout@v5 # Официальный action для checkout
         with: # Параметры checkout

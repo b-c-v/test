@@ -1,0 +1,29 @@
+---
+# .github/workflows/reusable-build.yml (called workflow)
+name: Any Reusable Build
+on:
+  workflow_call:
+    inputs: # variables that can be passed from the caller workflow
+      node_version:
+        required: true # mandatory variable
+        type: string
+      environment:
+        description: "Target deployment environment (e.g. staging, production)"
+        required: false # non-mandatory (optional) variable
+        type: string
+        default: "staging" # used when caller does not provide a value
+    secrets:
+      npm_token:
+        required: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node_version }}
+      - run: |
+          echo "[demo] Node version input: ${{ inputs.node_version }}"
+          echo "[demo] Workflow call is working"
+      - run: echo "Deploying to ${{ inputs.environment }}"
