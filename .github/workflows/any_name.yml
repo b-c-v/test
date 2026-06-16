@@ -61,7 +61,7 @@ jobs:
     name: Job 1 - Build on ${{ matrix.os }} - Node ${{ matrix.node }} # Понятное имя job в интерфейсе
     runs-on: ${{ matrix.os }} # Образ runner берётся из matrix
     timeout-minutes: 30 # Жёсткий лимит времени для этого job
-    strategy: # Настройка поведения matrix-выполнения      
+    strategy: # Настройка поведения matrix-выполнения
       fail-fast: false # Выполнить все matrix jobs, даже если один из них завершится ошибкой
       matrix: # Комбинации для сборки и тестирования
         os: [ubuntu-24.04, macos-15, windows-2025] # Поддерживаемые операционные системы (see https://docs.github.com/en/actions/reference/runners/github-hosted-runners)
@@ -93,13 +93,18 @@ jobs:
           node-version: ${{ matrix.node }} # Версия из matrix
           registry-url: "https://registry.npmjs.org" # Реестр npm по умолчанию
 
+      - name: Step 2.1 - Fail-fast probe # Временный шаг для проверки fail-fast в matrix
+        if: ${{ matrix.os == 'ubuntu-24.04' && matrix.node == '18' }}
+        run: exit 1
+
       - name: Step 3 - Print job PORT variable # Вывести значение переменной PORT
         run: |
           echo "JOB_PORT=$PORT" # Вывод значения PORT, который был переопределён для этого job
           echo "JOB_PORT=${{ env.PORT }}" # Альтернативный синтаксис для доступа к переменной окружения
           echo 'JOB_PORT=$PORT' # Нужно использовать "", чтобы переменная была интерполирована в bash
           echo 'JOB_PORT=${{ env.PORT }}' # В этом случае переменная будет интерполирована и выведет значения PORT
-          echo "JOB_ID=$GITHUB_JOB" # Вывод значения default environment variable (see https://docs.github.com/en/actions/reference/workflows-and-actions/variables) 
+          echo "JOB_ID=$GITHUB_JOB" # Вывод значения default environment variable (see https://docs.github.com/en/actions/reference/workflows-and-actions/variables). Для глобальной переменной внутри run нужно использовать синтаксис оболочки для доступа к переменным окружения, а не синтаксис GitHub Actions (${{ '${{GITHUB_JOB}}' }} или env.GITHUB_JOB).
+          echo "JOB_ID_ACTION_SYNTAX=${{ github.job }}" # Синтаксис GitHub Actions для печати того же значения, что и в глобальной переменной {GITHUB_JOB}}
 
       - name: Step 4 - Check if package.json exists # Проверить наличие package.json
         id: check_package_json_id # Идентификатор шага для использования в if условии в следующих steps
@@ -167,8 +172,8 @@ jobs:
         if: contains(github.ref, 'release') # Совпадение с release ref
         run: echo "Building release branch"
 
-      - name: 'Step 18 - Step with continue-on-error: true' # Пример step, который не блокирует workflow
-        continue-on-error: true # Workflow продолжится после ошибки
+      - name: 'Step 18 - Step with continue-on-error: true' # Пример step, который не блокирует workflow 
+        continue-on-error: true # Workflow продолжится после ошибки и в Summary и на схеме этот step и job будут отмечены как successful, только в Annotations job будет отмечен как failed
         run: "exit 1"
 
       - name: 'Step 19 - Working directory example' # Переопределить рабочий каталог по умолчанию
@@ -183,7 +188,7 @@ jobs:
         shell: pwsh # PowerShell Core
         run: Write-Host "Using PowerShell shell"
 
-      - name: Step 22 - Upload build artifact # Сохранить результат сборки для последующих jobs
+      - name: 'Step 22 - Upload build artifact' # Сохранить результат сборки для последующих jobs
         uses: actions/upload-artifact@v4 # GitHub Action для загрузки артефактов
         with: # Параметры загрузки артефакта
           name: build-${{ matrix.os }}-${{ matrix.node }} # Уникальный артефакт для каждого matrix job
@@ -362,7 +367,7 @@ jobs:
           echo "Contains 'main': ${{ contains(github.ref, 'main') }}"
           echo "StartsWith refs/: ${{ startsWith(github.ref, 'refs/') }}"
           echo "Format: ${{ format('Branch: {0}', github.ref) }}"
-          
+
   report:
     name: Job 6 - Report on failures # Job для отчёта о неудачных job-ах
     runs-on: ubuntu-24.04
