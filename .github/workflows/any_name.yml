@@ -95,7 +95,7 @@ jobs:
 
       - name: Step 2.1 - Fail-fast probe # Временный шаг для проверки fail-fast в matrix
         if: ${{ matrix.os == 'ubuntu-24.04' && matrix.node == '18' }}
-        run: exit 1
+        run: exit 1 # Step и Job будет отмечен как Failed, но остальные комбинации в matrix продолжат выполнение
 
       - name: Step 3 - Print job PORT variable # Вывести значение переменной PORT
         run: |
@@ -315,14 +315,18 @@ jobs:
         run: echo "Using secret token (length=${{ secrets.GITHUB_TOKEN != '' && 'set' || 'unset' }})"
 
       - name: 'Step 4 - Failed step'
-        id: failed_step_id
+        continue-on-error: true # Workflow продолжится после ошибки, но этот step и job будут отмечены как successful, а в Annotations job будет отмечен как failed
         run: exit 1 # Завершить с ошибкой
 
-      - name: 'Step 5 - Conditional: Only on failure' # Выполняется после неуспешного step
+      - name: 'Step 6 - Failed step continue-on-error' # Пример step, который не блокирует workflow после ошибки
+        id: failed_step_id
+        run: exit 1
+
+      - name: 'Step 5 - Conditional: Only on failure' # Выполняется после неуспешного step (без continue-on-error: true)
         if: failure() # Встроенная проверка на ошибку
         run: echo "Build failed, continuing anyway..."
 
-      - name: 'Step 6 - Conditional: Only on failure of dedicated step' # Выполняется после неуспешного step, с проверкой конкретного шага
+      - name: 'Step 7 - Conditional: Only on failure of dedicated step' # Выполняется после неуспешного step, с проверкой конкретного шага
         if: failure() && steps.failed_step_id.outcome == 'failure' # Проверить, что ошибка произошла именно в шаге failed_step_id
         run: echo "Build for step failed_step_id failed, continuing anyway..."
 
