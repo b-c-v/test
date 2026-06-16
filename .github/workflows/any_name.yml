@@ -314,19 +314,20 @@ jobs:
       - name: 'Step 3 - Example: Using secrets (safely)' # Демонстрирует использование секрета без вывода его значения
         run: echo "Using secret token (length=${{ secrets.GITHUB_TOKEN != '' && 'set' || 'unset' }})"
 
-      - name: 'Step 4 - Failed step'
-        continue-on-error: true # Workflow продолжится после ошибки, но этот step и job будут отмечены как successful, а в Annotations job будет отмечен как failed
+      - name: 'Step 4 - Failed step with continue-on-error: true' # Пример step, который не блокирует workflow
+        continue-on-error: true # Продолжится после ошибки, но этот step и job будут отмечены как successful, а в Annotations job будет отмечен как failed
         run: exit 1 # Завершить с ошибкой
 
-      - name: 'Step 6 - Failed step continue-on-error' # Пример step, который не блокирует workflow после ошибки
+      - name: 'Step 5 - Failed step continue-on-error' # Блокирует workflow после ошибки, но следующие шаги будут выполнены, потому что у них есть continue-on-error: true
         id: failed_step_id
+        continue-on-error: true
         run: exit 1
 
-      - name: 'Step 5 - Conditional: Only on failure' # Выполняется после неуспешного step (без continue-on-error: true)
+      - name: 'Step 6 - Conditional: Only on failure' # Выполняется после неуспешного step (только если без continue-on-error: true)
         if: failure() # Встроенная проверка на ошибку
         run: echo "Build failed, continuing anyway..."
 
-      - name: 'Step 7 - Conditional: Only on failure of dedicated step' # Выполняется после неуспешного step, с проверкой конкретного шага
+      - name: 'Step 7 - Conditional: Only on failure of dedicated step' # Выполняется после неуспешного step, с проверкой конкретного шага (только если без continue-on-error: true)
         if: failure() && steps.failed_step_id.outcome == 'failure' # Проверить, что ошибка произошла именно в шаге failed_step_id
         run: echo "Build for step failed_step_id failed, continuing anyway..."
 
