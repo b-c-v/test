@@ -99,7 +99,7 @@ jobs:
           echo "JOB_PORT=${{ env.PORT }}" # Альтернативный синтаксис для доступа к переменной окружения
           echo 'JOB_PORT=$PORT' # Нужно использовать "", чтобы переменная была интерполирована в bash
           echo 'JOB_PORT=${{ env.PORT }}' # В этом случае переменная будет интерполирована и выведет значения PORT
-          echo 'JOB_ID=${{ env.GITHUB_JOB }}' # Вывод значения default environment variable (see https://docs.github.com/en/actions/reference/workflows-and-actions/variables)
+          echo "JOB_ID=$GITHUB_JOB" # Вывод значения default environment variable (see https://docs.github.com/en/actions/reference/workflows-and-actions/variables) 
 
       - name: Step 4 - Check if package.json exists # Проверить наличие package.json
         id: check_package_json_id # Идентификатор шага для использования в if условии в следующих steps
@@ -371,7 +371,7 @@ jobs:
     steps: # Steps для отчёта о неудачных job-ах
       - name: Step 1 - Report failed jobs # Вывести список неудачных jobs
         run: |
-          echo "Failed jobs in this workflow run:"
+          echo "Failed jobs in this workflow:"
           failed_jobs=$(echo '${{ toJson(needs) }}' | jq -r 'to_entries[] | select(.value.result == "failure") | .key')
           if [ -z "$failed_jobs" ]; then
             echo " - none"
