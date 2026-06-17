@@ -267,8 +267,9 @@ jobs:
           fi
 
   security: # Параллельный job проверки безопасности
-    name: Job 3 - Security Scan # Имя job в интерфейсе Actions
+    name: Job 3 - Run in container # Имя job в интерфейсе Actions
     runs-on: ubuntu-24.04
+    container: node:lts-alpine3.24 # Запускать job в контейнере
     permissions: # Минимально необходимые права токена для этого job
       contents: read # Разрешить checkout репозитория
       security-events: write # Нужно для публикации результатов security-проверок
