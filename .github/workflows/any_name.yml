@@ -95,9 +95,9 @@ jobs:
           node-version: ${{ matrix.any_node_version }} # Версия из matrix
           registry-url: "https://registry.npmjs.org" # Реестр npm по умолчанию
 
-      - name: Step 3 - Fail-fast probe # Временный шаг для проверки fail-fast в matrix
-        if: ${{ matrix.any_name_os == 'ubuntu-24.04' && matrix.any_node_version == '18' }}
-        run: exit 1 # Step и Job будет отмечен как Failed, но остальные комбинации в matrix продолжат выполнение
+      # - name: Step 3 - Fail-fast probe # Временный шаг для проверки fail-fast в matrix
+      #   if: ${{ matrix.any_name_os == 'ubuntu-24.04' && matrix.any_node_version == '18' }}
+      #   run: exit 1 # Step и Job будет отмечен как Failed, но остальные комбинации в matrix продолжат выполнение
 
       - name: Step 4 - Check if package.json exists # Проверить наличие package.json
         id: check_package_json_id # Идентификатор шага для использования в if условии в следующих steps
@@ -396,7 +396,7 @@ jobs:
         run: echo "Build for step continue_on_error_step_id failed (checked via conclusion)..."
 
   deploy: # Зависит от any_job_name и security
-    name: Job 8 - Deploy to ${{ github.event.inputs.deployment_target || 'staging' }} # Динамическое имя целевого окружения
+    name: Job 8 - Outputs show for environment ${{ github.event.inputs.deployment_target || 'staging' }} # Динамическое имя целевого окружения
     runs-on: ubuntu-24.04
     needs: [any_job_name, security] # Дождаться обоих upstream jobs
     if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' # Выполнять деплой только из main или при ручном запуске
@@ -429,7 +429,7 @@ jobs:
   report:
     name: Job 9 - Report on failures # Job для отчёта о неудачных job-ах
     runs-on: ubuntu-24.04
-    needs: [any_job_name, conditions, lint, metadata_and_shell_checks, security, deploy] # Дождаться всех основных jobs
+    needs: [any_job_name, conditions, variable_print, lint, metadata_and_shell_checks, security, errors_handling, deploy] # Дождаться всех основных jobs
     if: failure()
     steps: # Steps для отчёта о неудачных job-ах
       - name: Step 1 - Report failed jobs # Вывести список неудачных jobs
@@ -446,7 +446,7 @@ jobs:
     name: Job 10 - Workflow Status # Сводка по результату pipeline
     runs-on: ubuntu-24.04
     if: always() # Всегда запускается, даже если предыдущие jobs завершились ошибкой
-    needs: [any_job_name, conditions, lint, metadata_and_shell_checks, security, deploy] # Дождаться всех основных jobs
+    needs: [any_job_name, conditions, variable_print, lint, metadata_and_shell_checks, security, errors_handling, deploy] # Дождаться всех основных jobs
 
     steps: # Steps финальной отчётности по статусу
       - name: Step 1 - Report success # Сообщение для полностью успешного workflow
@@ -466,6 +466,9 @@ jobs:
           echo "Job results:"
           echo " any_job_name: ${{ needs.any_job_name.result }}" # Вывод статуса job-а any_job_name, который является зависимостью для этого job-а
           echo " conditions: ${{ needs.conditions.result }}"
+          echo " variable_print: ${{ needs.variable_print.result }}"
           echo " lint: ${{ needs.lint.result }}"
           echo " metadata_and_shell_checks: ${{ needs.metadata_and_shell_checks.result }}"
           echo " security: ${{ needs.security.result }}"
+          echo " errors_handling: ${{ needs.errors_handling.result }}"
+          echo " deploy: ${{ needs.deploy.result }}"
