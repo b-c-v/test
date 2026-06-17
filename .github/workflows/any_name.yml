@@ -104,7 +104,7 @@ jobs:
         shell: bash # Явно использовать bash shell для выполнения run-команды (по умолчанию используется sh на Linux и macOS, и cmd на Windows)
         run: echo "exists_var=$(test -f package.json && echo 'true' || echo 'false')" >> "$GITHUB_OUTPUT"
       
-      - name: Step 6 - Using PowerShell shell # Пример shell, ориентированного на Windows
+      - name: Step 5 - Using PowerShell shell # Пример shell, ориентированного на Windows
         shell: pwsh # Явно использовать PowerShell shell для выполнения run-команды
         run: Write-Host "Using PowerShell shell"
 
@@ -123,11 +123,7 @@ jobs:
         if: steps.check_package_json_id.outputs.exists_var == 'true' && steps.cache_id.outputs.cache-hit != 'true' # Только если package.json существует и кэш не был найден (cache-hit - это специальный output, который возвращает boolean, указывая, был ли найден кэш)
         run: npm install
 
-      - name: 'Step 18 - Working directory example' # Переопределить рабочий каталог по умолчанию
-        working-directory: . # Текущий корень репозитория
-        run: 'echo "Current directory: $(pwd)"'
-
-      - name: 'Step 21 - Upload build artifact' # Сохранить результат сборки для последующих jobs
+      - name: 'Step 8 - Upload build artifact' # Сохранить результат сборки для последующих jobs
         uses: actions/upload-artifact@v4 # GitHub Action для загрузки артефактов
         with: # Параметры загрузки артефакта
           name: build-${{ matrix.any_name_os }}-${{ matrix.any_node_version }} # Уникальный артефакт для каждого matrix job
@@ -143,19 +139,19 @@ jobs:
       - name: Step 1 - Checkout repository # Получение репозитория
         uses: actions/checkout@v5
 
-      - name: "Step 1 - Conditional: Only on success" # Выполняется, когда предыдущие steps прошли успешно
+      - name: "Step 2 - Conditional: Only on success" # Выполняется, когда предыдущие steps прошли успешно
         if: success() # Встроенная проверка статуса
         run: echo "Build succeeded"
 
-      - name: 'Step 2 - Conditional: Only on push' # Поведение, зависящее от типа события
+      - name: 'Step 3 - Conditional: Only on push' # Поведение, зависящее от типа события
         if: github.event_name == 'push' # Только для push-событий
         run: echo "This is a push event"
 
-      - name: 'Step 3 - Conditional: Branch contains pattern' # Строковая функция в выражениях
+      - name: 'Step 4 - Conditional: Branch contains pattern' # Строковая функция в выражениях
         if: contains(github.ref, 'release') # Совпадение с release ref
         run: echo "Building release branch"
 
-      - name: 'Step 4 - Failed step with continue-on-error: true' # Пример step, который не блокирует workflow
+      - name: 'Step 5 - Failed step with continue-on-error: true' # Пример step, который не блокирует workflow
         continue-on-error: true # Workflow продолжится после ошибки и в Summary и на схеме этот step и job будут отмечены как successful, только в Annotations job будет отмечен как failed
         run: "exit 1"
 
@@ -164,39 +160,45 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
-          PORT: 1234 # Переопределить глобальный PORT для этого job
+        PORT: 1234 # Переопределить глобальный PORT для этого job
     steps:
-      - name: Step 1 - Checkout repository # Получение репозитория
+      - name: 'Step 1 - Working directory example' # Переопределить рабочий каталог по умолчанию
+        working-directory: . # Текущий корень репозитория
+        run: 'echo "Current directory: $(pwd)"'
+
+      - name: Step 2 - Checkout repository # Получение репозитория
         uses: actions/checkout@v5
-      - name: "Step 8 - Single-line run with pipe to tee" # однострочный run с pipe (|) - всё в одной строке
+
+      - name: "Step 3 - Single-line run with pipe to tee" # однострочный run с pipe (|) - всё в одной строке
         run: echo "Step 1 executed" | tee output.txt
 
-      - name: "Step 9 - Multi-line run with literal block (|)" # многострочный run с pipe (|) - сохраняет переводы строк
+      - name: "Step 4 - Multi-line run with literal block (|)" # многострочный run с pipe (|) - сохраняет переводы строк
         run: |
           echo "Installing dependencies..."
           echo "Line 1: Setting up environment"
           echo "Line 2: Checking versions"
           echo "Line 3: Done"
 
-      - name: 'Step 10 - Multi-line run with folded style (>)' # folded style с > - объединяет строки пробелами
+      - name: 'Step 5 - Multi-line run with folded style (>)' # folded style с > - объединяет строки пробелами
         run: >
           echo "This is a long command that spans"
           "multiple lines but gets joined"
           "with spaces instead of newlines"
 
-      - name: 'Step 11 - Multi-line run with strip final newline (|-)' # literal block с |- - удаляет завершающий перевод строки
+      - name: 'Step 6 - Multi-line run with strip final newline (|-)' # literal block с |- - удаляет завершающий перевод строки
         run: |-
           echo "First line"
           echo "Second line"
 
-      - name: Step 12 - Build and generate output # Создать значения для downstream jobs
+      - name: Step 7 - Build and generate output # Создать значения для downstream jobs
         id: build_step_id # Идентификатор step для outputs
         run: |
           echo "Building project on ${{ matrix.any_name_os }}..."
           echo "Node version: ${{ matrix.any_node_version }}"
           echo "artifact_id_var=build-${{ github.run_number }}" >> $GITHUB_OUTPUT # Записываем step output в спецфайл $GITHUB_OUTPUT, чтобы значение стало доступно в следующих шагах/job как outputs
           echo "any_file_name_var=script-${{ github.run_number }}.sh" >> $GITHUB_OUTPUT # In next jobs you can access this value via needs.<job_id>.outputs.any_file_name_var
-      - name: Step 2 - Print job PORT variable # Вывести значение переменной PORT
+
+      - name: Step 8 - Print job PORT variable # Вывести значение переменной PORT
         run: |
           echo "JOB_PORT=$PORT" # Вывод значения PORT, который был переопределён для этого job
           echo "JOB_PORT=${{ env.PORT }}" # Альтернативный синтаксис для доступа к переменной окружения
@@ -205,35 +207,35 @@ jobs:
           echo "JOB_ID=$GITHUB_JOB" # Вывод значения default environment variable (see https://docs.github.com/en/actions/reference/workflows-and-actions/variables). Для глобальной переменной внутри run нужно использовать синтаксис оболочки для доступа к переменным окружения, а не синтаксис GitHub Actions (${{ '${{GITHUB_JOB}}' }} или env.GITHUB_JOB).
           echo "JOB_ID_ACTION_SYNTAX=${{ github.job }}" # Синтаксис GitHub Actions для печати того же значения, что и в глобальной переменной {GITHUB_JOB}}
 
-      - name: Step 1 - Checkout repository # Получение репозитория
+      - name: Step 9 - Checkout repository # Получение репозитория
         uses: actions/checkout@v5
 
-      - name: Step 2 - Get commit info # Сохранение переменных в output step
+      - name: Step 10 - Get commit info # Сохранение переменных в output step
         id: commit_id
         run: |
           echo "sha_var=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
           echo "message_var=$(git log -1 --pretty=%B)" >> $GITHUB_OUTPUT
           echo "author_var=$(git log -1 --pretty=%an)" >> $GITHUB_OUTPUT
 
-      - name: Step 3 - Display commit info # Использование outputs предыдущего step
+      - name: Step 11 - Display commit info # Использование outputs предыдущего step
         run: |
           echo "Commit SHA: ${{ steps.commit_id.outputs.sha_var }}"
           echo "Author: ${{ steps.commit_id.outputs.author_var }}"
 
-      - name: "Step 4 - Run multiple commands with set -e" # Несколько команд с корректной обработкой ошибок
+      - name: "Step 12 - Run multiple commands with set -e" # Несколько команд с корректной обработкой ошибок
         run: |
           set -e
           echo "Step 1: Checking syntax"
           echo "Step 2: Running linter"
           echo "Step 3: Running tests"
 
-      - name: 'Step 5 - Loop through items' # Циклическая конструкция
+      - name: 'Step 13 - Loop through items' # Циклическая конструкция
         run: |
           for i in 1 2 3; do
             echo "Processing item $i"
           done
 
-      - name: 'Step 6 - Conditional logic in bash script' # Условная логика в run block
+      - name: 'Step 14 - Conditional logic in bash script' # Условная логика в run block
         run: |
           if [ "${{ github.event_name }}" == "pull_request" ]; then
             echo "Running PR checks..."
@@ -392,7 +394,7 @@ jobs:
         id: failed_step_id
         run: exit 1
 
-      - name: 'Step 7 -Check outcome vs conclusion for failed step without continue-on-error' # Для шага без continue-on-error outcome и conclusion совпадают
+      - name: 'Step 7 - Check outcome vs conclusion for failed step without continue-on-error' # Для шага без continue-on-error outcome и conclusion совпадают
         run: |
           echo "outcome: ${{ steps.failed_step_id.outcome }}" # 'failure'
           echo "conclusion: ${{ steps.failed_step_id.conclusion }}" # 'failure'
@@ -405,8 +407,8 @@ jobs:
         if: failure() && steps.continue_on_error_step_id.outcome == 'failure' # Проверить, что ошибка произошла именно в шаге continue_on_error_step_id
         run: echo "Build for step continue_on_error_step_id failed (checked via outcome)..."
 
-      - name: 'Step 10 - Run on specific step failure using conclusion' 
-        if: failure() && steps.continue_on_error_step_id.conclusion == 'success' # success потому что conclusion учитывает continue-on-error 
+      - name: 'Step 10 - Run on specific step failure using conclusion'
+        if: failure() && steps.continue_on_error_step_id.conclusion == 'success' # success потому что conclusion учитывает continue-on-error
         run: echo "Build for step continue_on_error_step_id failed (checked via conclusion)..."
 
   deploy: # Зависит от any_job_name и security
@@ -432,6 +434,7 @@ jobs:
           echo "Build artifacts from: ${{ needs.any_job_name.outputs.any_artifact_id_var }}" # Вывод ID артефакта, переданного из job any_job_name через outputs
           echo "Build status: ${{ needs.any_job_name.outputs.build_status_var }}" # Вывод статуса сборки из upstream job
           echo "Script file: ${{ needs.any_job_name.outputs.script_file_var }}" # Вывод пути к файлу скрипта, сгенерированному в any_job_name. Jobs, которые зависят от any_job_name через needs, могут читать строку.
+
       - name: Step 4 - Download all artifacts # Загрузить все артефакты из предыдущих jobs (in this case only from any_job_name)
         uses: actions/download-artifact@v4 # Artifacts are available after needs: [any_job_name]
 
@@ -440,11 +443,11 @@ jobs:
           echo "Deploying to environment: ${{ github.event.inputs.deployment_target || 'staging' }}"
           echo "Debug mode: ${{ github.event.inputs.debug_mode == true && 'enabled' || 'disabled' }}"
 
-      - name: 'Step 6 - Production deploy warning' # Дополнительное предупреждение для production
+      - name: Step 6 - Production deploy warning # Дополнительное предупреждение для production
         if: github.event.inputs.deployment_target == 'production' # Запускать только для production
         run: 'echo "WARNING: Deploying to production!"'
 
-      - name: 'Step 7 - Print GitHub context functions' # Использование функций GitHub context
+      - name: Step 7 - Print GitHub context functions # Использование функций GitHub context
         run: |
           echo "Contains 'main': ${{ contains(github.ref, 'main') }}"
           echo "StartsWith refs/: ${{ startsWith(github.ref, 'refs/') }}"
