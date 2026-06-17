@@ -1,22 +1,22 @@
 ---
-# .github/workflows/ci.yml (caller workflow)
+# .github/workflows/ci.yml (вызывающий workflow)
 name: CI
 on:
   push:
     branches: [main]
 jobs:
-  any-call-reusable_job:
+  any_name_job:
     uses: b-c-v/test/.github/workflows/reusable-build.yml@main
-    with: # provide the input variables for reusable workflow
-      node_version_var: "20" # provide the value for the mandatory variable
-      # environment_var: "production"  # optional - omit to use the default ("staging")
-      test_var: true  # optional - omit to use the default (false)
-    secrets: # provide the secrets for reusable workflow
-      npm_token_var: ${{ secrets.NPM_TOKEN }} # need to add the NPM_TOKEN secret to the repository settings
-  show-reusable-output_job:
+    with: # передает входные переменные в reusable workflow
+      node_version_var: "20" # значение обязательной переменной
+      # environment_var: "production"  # (optional) можно не указывать, тогда будет использовано значение по умолчанию "staging"
+      test_var: true  # (optional) можно не указывать, тогда будет использовано значение по умолчанию (false)
+    secrets: # передает секреты для reusable workflow
+      npm_token_var: ${{ secrets.NPM_TOKEN }} # перед использованием нужно добавить secret NPM_TOKEN в Settings репозитория
+  show_reusable_output_job:
     runs-on: ubuntu-latest
-    needs: any-call-reusable_job
+    needs: any_name_job # указывает зависимость, чтобы получить output из job reusable workflow
     steps:
       - run: |
-          echo "Reusable workflow message: ${{ needs.any-call-reusable_job.outputs.build_message_out }}" # accessing the output from the reusable workflow
-          echo "Reusable workflow environment: ${{ needs.any-call-reusable_job.outputs.deployed_environment_out }}" # 
+          echo "Reusable workflow message: ${{ needs.any_name_job.outputs.build_message_out }}" # читает output, возвращенный reusable workflow
+          echo "Reusable workflow environment: ${{ needs.any_name_job.outputs.deployed_environment_out }}" 
