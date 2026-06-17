@@ -242,6 +242,27 @@ jobs:
             echo "Running scheduled checks..."
           fi
 
+      - name: Step 15 - Print GitHub context # Вывести весь GitHub context
+        run: echo " ${{github }}" # GitHub context - это набор переменных, которые предоставляют информацию о событии, репозитории, коммите и других аспектах текущего workflow run.
+
+      - name: 'Step 16 - Print GitHub context variables' # Вывести выбранные значения GitHub context
+        run: |
+          echo "Repository: ${{ github.repository }}" # Вывод имени репозитория
+          echo "Ref: ${{ github.ref }}" # Вывод git ref, который вызвал workflow
+          echo "SHA: ${{ github.sha }}" # Вывод SHA коммита, который вызвал workflow
+          echo "Actor: ${{ github.actor }}" # Вывод пользователя, который инициировал workflow
+          echo "Run ID: ${{ github.run_id }}" # Вывод уникального идентификатора запуска workflow
+          echo "Run Number: ${{ github.run_number }}" # Вывод номера запуска workflow
+
+      - name: 'Step 17 - Check secret availability' # Демонстрирует использование секрета без вывода его значения
+        run: echo "Using secret token (length=${{ secrets.GITHUB_TOKEN != '' && 'set' || 'unset' }})"
+
+      - name: Step 18 - Print GitHub context functions # Использование функций GitHub context
+        run: |
+          echo "Contains 'main': ${{ contains(github.ref, 'main') }}"
+          echo "StartsWith refs/: ${{ startsWith(github.ref, 'refs/') }}"
+          echo "Format: ${{ format('Branch: {0}', github.ref) }}"
+
   lint: # Выполняется параллельно с any_job_name
     name: Job 4 - Lint and Test # Комбинированный job проверки качества кода
     runs-on: ubuntu-24.04 # Фиксированный Linux runner
@@ -332,34 +353,16 @@ jobs:
         env: # Переменные окружения, специфичные для step
           PORT: 1111 # Переопределить PORT для этого step
 
-      - name: Step 3 - Print GitHub context # Вывести весь GitHub context
-        run: echo " ${{github }}" # GitHub context - это набор переменных, которые предоставляют информацию о событии, репозитории, коммите и других аспектах текущего workflow run.
-
-      - name: 'Step 4 - Print GitHub context variables' # Вывести выбранные значения GitHub context
-        run: |
-          echo "Repository: ${{ github.repository }}" # Вывод имени репозитория
-          echo "Ref: ${{ github.ref }}" # Вывод git ref, который вызвал workflow
-          echo "SHA: ${{ github.sha }}" # Вывод SHA коммита, который вызвал workflow
-          echo "Actor: ${{ github.actor }}" # Вывод пользователя, который инициировал workflow
-          echo "Run ID: ${{ github.run_id }}" # Вывод уникального идентификатора запуска workflow
-          echo "Run Number: ${{ github.run_number }}" # Вывод номера запуска workflow
-
-  docs: # Зависит от других jobs
-    name: Job 7 - Generate Documentation # Сгенерировать или опубликовать документацию
+  errors_handling: # Зависит от других jobs
+    name: Job 7 - Error Handling and Continue on Error
     runs-on: ubuntu-24.04
     # Этот job запускается только если lint завершился успешно
     needs: lint # Дождаться завершения job lint
     if: success() # Пропустить, если обязательная предыдущая работа завершилась ошибкой
 
-    steps: # Steps генерации документации
+    steps: # Steps обработки ошибок
       - name: Step 1 - Checkout repository # Получение репозитория
         uses: actions/checkout@v5
-
-      - name: Step 2 - Generate documentation # Сгенерировать документацию
-        run: echo "Generating documentation..."
-
-      - name: 'Step 3 - Check secret availability' # Демонстрирует использование секрета без вывода его значения
-        run: echo "Using secret token (length=${{ secrets.GITHUB_TOKEN != '' && 'set' || 'unset' }})"
 
       - name: 'Step 4 - Failed step with continue-on-error: true' # Пример step, который не блокирует workflow
         id: continue_on_error_step_id
@@ -395,9 +398,7 @@ jobs:
   deploy: # Зависит от any_job_name и security
     name: Job 8 - Deploy to ${{ github.event.inputs.deployment_target || 'staging' }} # Динамическое имя целевого окружения
     runs-on: ubuntu-24.04
-    # Требует успешного завершения any_job_name и security
     needs: [any_job_name, security] # Дождаться обоих upstream jobs
-    # Запускается только из main или при ручном запуске
     if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' # Выполнять деплой только из main или при ручном запуске
     environment: # Используемый определённый GitHub environment для этого job (Settings ==> Environments)
       name: ${{ github.event.inputs.deployment_target || 'staging' }} # Выбранное окружение (можно использовать разные environments для разных job.)
@@ -406,9 +407,6 @@ jobs:
     steps: # Steps деплоя
       - name: Step 1 - Checkout repository # Получение репозитория
         uses: actions/checkout@v5
-
-      - name: "Step 2 - Check secret availability" # Использование секрета без вывода его значения
-        run: echo "MY_SECRET_VAR=${{ secrets.ANY_SECRET_VAR != '' && 'set' || 'unset' }}" # Переменную ANY_SECRET_VAR необходимо предварительно сохранить в Settings ==> Secrets and variables ==> Actions или Settings ==> Environments ==> Staging. Выводит 'set' если секрет определён, и 'unset' если он не задан.
 
       - name: Step 3 - Retrieve any_job_name outputs # Прочитать значения из job any_job_name
         run: |
@@ -428,16 +426,10 @@ jobs:
         if: github.event.inputs.deployment_target == 'production' # Запускать только для production
         run: 'echo "WARNING: Deploying to production!"'
 
-      - name: Step 7 - Print GitHub context functions # Использование функций GitHub context
-        run: |
-          echo "Contains 'main': ${{ contains(github.ref, 'main') }}"
-          echo "StartsWith refs/: ${{ startsWith(github.ref, 'refs/') }}"
-          echo "Format: ${{ format('Branch: {0}', github.ref) }}"
-
   report:
     name: Job 9 - Report on failures # Job для отчёта о неудачных job-ах
     runs-on: ubuntu-24.04
-    needs: [any_job_name, conditions, lint, metadata_and_shell_checks, security, docs, deploy] # Дождаться всех основных jobs
+    needs: [any_job_name, conditions, lint, metadata_and_shell_checks, security, deploy] # Дождаться всех основных jobs
     if: failure()
     steps: # Steps для отчёта о неудачных job-ах
       - name: Step 1 - Report failed jobs # Вывести список неудачных jobs
@@ -454,7 +446,7 @@ jobs:
     name: Job 10 - Workflow Status # Сводка по результату pipeline
     runs-on: ubuntu-24.04
     if: always() # Всегда запускается, даже если предыдущие jobs завершились ошибкой
-    needs: [any_job_name, conditions, lint, metadata_and_shell_checks, security, docs, deploy] # Дождаться всех основных jobs
+    needs: [any_job_name, conditions, lint, metadata_and_shell_checks, security, deploy] # Дождаться всех основных jobs
 
     steps: # Steps финальной отчётности по статусу
       - name: Step 1 - Report success # Сообщение для полностью успешного workflow
@@ -477,4 +469,3 @@ jobs:
           echo " lint: ${{ needs.lint.result }}"
           echo " metadata_and_shell_checks: ${{ needs.metadata_and_shell_checks.result }}"
           echo " security: ${{ needs.security.result }}"
-          echo " docs: ${{ needs.docs.result }}"
