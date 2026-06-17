@@ -5,10 +5,18 @@ on:
   push:
     branches: [main]
 jobs:
-  any-call-reusable-build:
+  any-call-reusable_job:
     uses: b-c-v/test/.github/workflows/reusable-build.yml@main
-    with:
-      node_version_var: "20"
+    with: # provide the input variables for reusable workflow
+      node_version_var: "20" # provide the value for the mandatory variable
       # environment_var: "production"  # optional - omit to use the default ("staging")
-    secrets:
-      npm_token_var: ${{ secrets.NPM_TOKEN }}
+      test_var: true  # optional - omit to use the default (false)
+    secrets: # provide the secrets for reusable workflow
+      npm_token_var: ${{ secrets.NPM_TOKEN }} # need to add the NPM_TOKEN secret to the repository settings
+  show-reusable-output_job:
+    runs-on: ubuntu-latest
+    needs: any-call-reusable_job
+    steps:
+      - run: |
+          echo "Reusable workflow message: ${{ needs.any-call-reusable_job.outputs.build_message_out }}" # accessing the output from the reusable workflow
+          echo "Reusable workflow environment: ${{ needs.any-call-reusable_job.outputs.deployed_environment_out }}" # 

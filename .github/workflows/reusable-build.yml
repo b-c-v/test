@@ -2,28 +2,46 @@
 # .github/workflows/reusable-build.yml (called workflow)
 name: Any Reusable Build
 on:
-  workflow_call:
+  workflow_call: # makes this workflow reusable by other workflows
     inputs: # variables that can be passed from the caller workflow
       node_version_var: # variable name
         required: true # mandatory variable
         type: string
       environment_var:
         description: "Target deployment environment (e.g. staging, production)"
-        required: false # non-mandatory (optional) variable
+        required: false # optional variable
         type: string
         default: "staging" # used when caller does not provide a value
+      test_var:
+        type: boolean
+        default: false
+    outputs: # values exposed back to the caller workflow
+      build_message_out: # variable name
+        description: "Example message produced by the reusable workflow"
+        value: ${{ jobs.build_job.outputs.build_message_out }} # accessing the output from the job in this workflow
+      deployed_environment_out:
+        description: "Environment used by the reusable workflow"
+        value: ${{ jobs.build_job.outputs.deployed_environment_out }}
     secrets:
       npm_token_var:
         required: true
 jobs:
-  build:
+  build_job:
     runs-on: ubuntu-latest
+    outputs:
+      build_message_out: ${{ steps.publish_outputs.outputs.build_message_out }} # accessing the output from the step in this job
+      deployed_environment_out: ${{ steps.publish_outputs.outputs.deployed_environment_out }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ inputs.node_version_var }} # using the input variable passed from the caller workflow
       - run: |
-          echo "[demo] Node version input: ${{ inputs.node_version_var }}"
-          echo "[demo] Workflow call is working"
+          echo "Node version input: ${{ inputs.node_version_var }}"
+          echo "Workflow call is working"
+          echo "Test variable input: ${{ inputs.test_var }}"
       - run: echo "Deploying to ${{ inputs.environment_var }}"
+      - id: publish_outputs
+        run: |
+          echo "build_message_out=Build completed with Node ${{ inputs.node_version_var }}" >> "$GITHUB_OUTPUT"
+          echo "deployed_environment_out=${{ inputs.environment_var }}" >> "$GITHUB_OUTPUT"
