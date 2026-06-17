@@ -231,32 +231,48 @@ jobs:
         if: steps.check_package_json_id.outputs.exists_var == 'true' # Только если package.json существует
         run: npm install # npm install будет использовать кэшированные node_modules если они доступны
 
-      - name: Step 7 - Get commit info # Сохранение переменных в output step
+  metadata_and_shell_checks: # Отдельный job для шагов контекста и shell-примеров
+    name: Job 3 - Metadata and Service Checks
+    runs-on: ubuntu-24.04
+    services: # Сервис для примера интеграции; текущие шаги от него не зависят
+      redis: # Пример использования сервисов в GitHub Actions. Redis будет запущен в контейнере и доступен на порту 6379.
+        image: redis:7-alpine
+        options: >- # Параметры для настройки контейнера Redis
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Step 1 - Checkout repository # Получение репозитория
+        uses: actions/checkout@v5
+
+      - name: Step 2 - Get commit info # Сохранение переменных в output step
         id: commit_id
         run: |
           echo "sha_var=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
           echo "message_var=$(git log -1 --pretty=%B)" >> $GITHUB_OUTPUT
           echo "author_var=$(git log -1 --pretty=%an)" >> $GITHUB_OUTPUT
 
-      - name: Step 8 - Display commit info # Использование outputs предыдущего step
+      - name: Step 3 - Display commit info # Использование outputs предыдущего step
         run: |
           echo "Commit SHA: ${{ steps.commit_id.outputs.sha_var }}"
           echo "Author: ${{ steps.commit_id.outputs.author_var }}"
 
-      - name: "Step 9 - Run multiple commands with set -e" # Несколько команд с корректной обработкой ошибок
+      - name: "Step 4 - Run multiple commands with set -e" # Несколько команд с корректной обработкой ошибок
         run: |
           set -e
           echo "Step 1: Checking syntax"
           echo "Step 2: Running linter"
           echo "Step 3: Running tests"
 
-      - name: 'Step 10 - Loop through items' # Циклическая конструкция
+      - name: 'Step 5 - Loop through items' # Циклическая конструкция
         run: |
           for i in 1 2 3; do
             echo "Processing item $i"
           done
 
-      - name: 'Step 11 - Conditional logic in bash script' # Условная логика в run block
+      - name: 'Step 6 - Conditional logic in bash script' # Условная логика в run block
         run: |
           if [ "${{ github.event_name }}" == "pull_request" ]; then
             echo "Running PR checks..."
@@ -267,13 +283,12 @@ jobs:
           fi
 
   security: # Параллельный job проверки безопасности
-    name: Job 3 - Run in container # Имя job в интерфейсе Actions
+    name: Job 4 - Run in container # Имя job в интерфейсе Actions
     runs-on: ubuntu-24.04
     container: node:lts-alpine3.24 # Запускать job в контейнере
     permissions: # Минимально необходимые права токена для этого job
       contents: read # Разрешить checkout репозитория
       security-events: write # Нужно для публикации результатов security-проверок
-    timeout-minutes: 20
 
     steps: # Steps job-а security
       - name: Step 1 - Checkout repository # Получить исходный код для сканирования
@@ -297,12 +312,11 @@ jobs:
           echo "Run Number: ${{ github.run_number }}" # Вывод номера запуска workflow
 
   docs: # Зависит от других jobs
-    name: Job 4 - Generate Documentation # Сгенерировать или опубликовать документацию
+    name: Job 5 - Generate Documentation # Сгенерировать или опубликовать документацию
     runs-on: ubuntu-24.04
     # Этот job запускается только если lint завершился успешно
     needs: lint # Дождаться завершения job lint
     if: success() # Пропустить, если обязательная предыдущая работа завершилась ошибкой
-    timeout-minutes: 10
 
     steps: # Steps генерации документации
       - name: Step 1 - Checkout repository # Получение репозитория
@@ -346,13 +360,12 @@ jobs:
         run: echo "Build for step continue_on_error_step_id failed (checked via conclusion)..."
 
   deploy: # Зависит от any_job_name и security
-    name: Job 5 - Deploy to ${{ github.event.inputs.deployment_target || 'staging' }} # Динамическое имя целевого окружения
+    name: Job 6 - Deploy to ${{ github.event.inputs.deployment_target || 'staging' }} # Динамическое имя целевого окружения
     runs-on: ubuntu-24.04
     # Требует успешного завершения any_job_name и security
     needs: [any_job_name, security] # Дождаться обоих upstream jobs
     # Запускается только из main или при ручном запуске
     if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' # Выполнять деплой только из main или при ручном запуске
-    timeout-minutes: 25
     environment: # Используемый определённый GitHub environment для этого job (Settings ==> Environments)
       name: ${{ github.event.inputs.deployment_target || 'staging' }} # Выбранное окружение (можно использовать разные environments для разных job.)
       url: https://example.com # URL целевого приложения
@@ -388,9 +401,9 @@ jobs:
           echo "Format: ${{ format('Branch: {0}', github.ref) }}"
 
   report:
-    name: Job 6 - Report on failures # Job для отчёта о неудачных job-ах
+    name: Job 7 - Report on failures # Job для отчёта о неудачных job-ах
     runs-on: ubuntu-24.04
-    needs: [any_job_name, lint, security, docs, deploy] # Дождаться всех основных jobs
+    needs: [any_job_name, lint, metadata_and_shell_checks, security, docs, deploy] # Дождаться всех основных jobs
     if: failure()
     steps: # Steps для отчёта о неудачных job-ах
       - name: Step 1 - Report failed jobs # Вывести список неудачных jobs
@@ -404,10 +417,10 @@ jobs:
           fi
 
   status: # Финальный job отчётности и очистки
-    name: Job 7 - Workflow Status # Сводка по результату pipeline
+    name: Job 8 - Workflow Status # Сводка по результату pipeline
     runs-on: ubuntu-24.04
     if: always() # Всегда запускается, даже если предыдущие jobs завершились ошибкой
-    needs: [any_job_name, lint, security, docs, deploy] # Дождаться всех основных jobs
+    needs: [any_job_name, lint, metadata_and_shell_checks, security, docs, deploy] # Дождаться всех основных jobs
 
     steps: # Steps финальной отчётности по статусу
       - name: Step 1 - Report success # Сообщение для полностью успешного workflow
@@ -427,5 +440,6 @@ jobs:
           echo "Job results:"
           echo " any_job_name: ${{ needs.any_job_name.result }}" # Вывод статуса job-а any_job_name, который является зависимостью для этого job-а
           echo " lint: ${{ needs.lint.result }}"
+          echo " metadata_and_shell_checks: ${{ needs.metadata_and_shell_checks.result }}"
           echo " security: ${{ needs.security.result }}"
           echo " docs: ${{ needs.docs.result }}"
