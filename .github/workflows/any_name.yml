@@ -103,12 +103,8 @@ jobs:
         id: check_package_json_id # Идентификатор шага для использования в if условии в следующих steps
         shell: bash # Явно использовать bash shell для выполнения run-команды (по умолчанию используется sh на Linux и macOS, и cmd на Windows)
         run: echo "exists_var=$(test -f package.json && echo 'true' || echo 'false')" >> "$GITHUB_OUTPUT"
-      
-      - name: Step 5 - Using PowerShell shell # Пример shell, ориентированного на Windows
-        shell: pwsh # Явно использовать PowerShell shell для выполнения run-команды
-        run: Write-Host "Using PowerShell shell"
 
-      - name: Step 6 - Cache dependencies # Кэширование зависимостей npm для ускорения сборки. Кэш можно использовать в любом другом workflow или job, который использует тот же ключ кэша.
+      - name: Step 5 - Cache dependencies # Кэширование зависимостей npm для ускорения сборки. Кэш можно использовать в любом другом workflow или job, который использует тот же ключ кэша.
         if: steps.check_package_json_id.outputs.exists_var == 'true' # Только если package.json существует. check_package_json_id - это id предыдущего шага, outputs.exists_var - это значение, которое было записано в $GITHUB_OUTPUT в том шаге.
         uses: actions/cache@v4 # Action для кэширования файлов между runs
         id: cache_id # Идентификатор шага кэширования, чтобы проверить его результат в следующих шагах
@@ -119,11 +115,11 @@ jobs:
             ${{ runner.os }}-node-${{ matrix.any_node_version }}- # Ищет кэш для этой комбинации ОС и версии Node
             ${{ runner.os }}-node- # Ищет кэш для этой ОС с любой версией Node
 
-      - name: Step 7 - Install dependencies (using cache) # Установить зависимости, если кэш отсутствует
+      - name: Step 6 - Install dependencies (using cache) # Установить зависимости, если кэш отсутствует
         if: steps.check_package_json_id.outputs.exists_var == 'true' && steps.cache_id.outputs.cache-hit != 'true' # Только если package.json существует и кэш не был найден (cache-hit - это специальный output, который возвращает boolean, указывая, был ли найден кэш)
         run: npm install
 
-      - name: 'Step 8 - Upload build artifact' # Сохранить результат сборки для последующих jobs
+      - name: 'Step 7 - Upload build artifact' # Сохранить результат сборки для последующих jobs
         uses: actions/upload-artifact@v4 # GitHub Action для загрузки артефактов
         with: # Параметры загрузки артефакта
           name: build-${{ matrix.any_name_os }}-${{ matrix.any_node_version }} # Уникальный артефакт для каждого matrix job
@@ -151,10 +147,6 @@ jobs:
         if: contains(github.ref, 'release') # Совпадение с release ref
         run: echo "Building release branch"
 
-      - name: 'Step 5 - Failed step with continue-on-error: true' # Пример step, который не блокирует workflow
-        continue-on-error: true # Workflow продолжится после ошибки и в Summary и на схеме этот step и job будут отмечены как successful, только в Annotations job будет отмечен как failed
-        run: "exit 1"
-
   variable_print: # Job для вывода переменных
     name: Job 3 - Variable Print
     runs-on: ubuntu-24.04
@@ -165,32 +157,40 @@ jobs:
       - name: 'Step 1 - Working directory example' # Переопределить рабочий каталог по умолчанию
         working-directory: . # Текущий корень репозитория
         run: 'echo "Current directory: $(pwd)"'
-
+      
       - name: Step 2 - Checkout repository # Получение репозитория
         uses: actions/checkout@v5
 
-      - name: "Step 3 - Single-line run with pipe to tee" # однострочный run с pipe (|) - всё в одной строке
+      - name: Step 3 - Using PowerShell shell # Пример shell, ориентированного на Windows
+        shell: pwsh
+        run: |
+          Write-Host "Current shell: $($PSVersionTable.PSVersion.Major).$($PSVersionTable.PSVersion.Minor)"
+          Write-Host "Shell executable: $(Get-Process -Id $PID).ProcessName"
+          Write-Host "Using pwsh: confirmed"
+
+      - name: "Step 4 - Single-line run with pipe to tee" # однострочный run с pipe (|) - всё в одной строке
         run: echo "Step 1 executed" | tee output.txt
 
-      - name: "Step 4 - Multi-line run with literal block (|)" # многострочный run с pipe (|) - сохраняет переводы строк
+      - name: "Step 5 - Multi-line run with literal block (|)" # многострочный run с pipe (|) - сохраняет переводы строк
         run: |
-          echo "Installing dependencies..."
-          echo "Line 1: Setting up environment"
-          echo "Line 2: Checking versions"
-          echo "Line 3: Done"
+          echo "This is a multi-line command"
+          echo "Each line is preserved as a newline in the output"
+          pwd
+          cat output.txt
+          echo "Done"
 
-      - name: 'Step 5 - Multi-line run with folded style (>)' # folded style с > - объединяет строки пробелами
+      - name: 'Step 6 - Multi-line run with folded style (>)' # folded style с > - объединяет строки пробелами
         run: >
           echo "This is a long command that spans"
           "multiple lines but gets joined"
           "with spaces instead of newlines"
 
-      - name: 'Step 6 - Multi-line run with strip final newline (|-)' # literal block с |- - удаляет завершающий перевод строки
+      - name: 'Step 7 - Multi-line run with strip final newline (|-)' # literal block с |- - удаляет завершающий перевод строки
         run: |-
           echo "First line"
           echo "Second line"
 
-      - name: Step 7 - Build and generate output # Создать значения для downstream jobs
+      - name: Step 8 - Build and generate output # Создать значения для downstream jobs
         id: build_step_id # Идентификатор step для outputs
         run: |
           echo "Building project on ${{ matrix.any_name_os }}..."
@@ -198,17 +198,14 @@ jobs:
           echo "artifact_id_var=build-${{ github.run_number }}" >> $GITHUB_OUTPUT # Записываем step output в спецфайл $GITHUB_OUTPUT, чтобы значение стало доступно в следующих шагах/job как outputs
           echo "any_file_name_var=script-${{ github.run_number }}.sh" >> $GITHUB_OUTPUT # In next jobs you can access this value via needs.<job_id>.outputs.any_file_name_var
 
-      - name: Step 8 - Print job PORT variable # Вывести значение переменной PORT
+      - name: Step 9 - Print job PORT variable # Вывести значение переменной PORT
         run: |
-          echo "JOB_PORT=$PORT" # Вывод значения PORT, который был переопределён для этого job
+          echo "JOB_PORT=$PORT" # 1234 Вывод значения PORT, который был переопределён для этого job
           echo "JOB_PORT=${{ env.PORT }}" # Альтернативный синтаксис для доступа к переменной окружения
           echo 'JOB_PORT=$PORT' # Нужно использовать "", чтобы переменная была интерполирована в bash
           echo 'JOB_PORT=${{ env.PORT }}' # В этом случае переменная будет интерполирована и выведет значения PORT
           echo "JOB_ID=$GITHUB_JOB" # Вывод значения default environment variable (see https://docs.github.com/en/actions/reference/workflows-and-actions/variables). Для глобальной переменной внутри run нужно использовать синтаксис оболочки для доступа к переменным окружения, а не синтаксис GitHub Actions (${{ '${{GITHUB_JOB}}' }} или env.GITHUB_JOB).
           echo "JOB_ID_ACTION_SYNTAX=${{ github.job }}" # Синтаксис GitHub Actions для печати того же значения, что и в глобальной переменной {GITHUB_JOB}}
-
-      - name: Step 9 - Checkout repository # Получение репозитория
-        uses: actions/checkout@v5
 
       - name: Step 10 - Get commit info # Сохранение переменных в output step
         id: commit_id
@@ -256,7 +253,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Step 2 - Print global PORT variable # Вывести GLOBAL PORT
-        run: echo "GLOBAL_PORT=$PORT" # Нужно использовать "", чтобы переменная была интерполирована в bash. Если использовать '', будет напечатано буквально GLOBAL_PORT=$PORT, а не его значение.
+        run: echo "GLOBAL_PORT=$PORT" # 8888 Нужно использовать "", чтобы переменная была интерполирована в bash. Если использовать '', будет напечатано буквально GLOBAL_PORT=$PORT, а не его значение.
 
       - name: Step 3 - Setup Node.js 18 # Установить Node.js версии 18
         uses: actions/setup-node@v5
@@ -283,11 +280,13 @@ jobs:
         run: npm install # npm install будет использовать кэшированные node_modules если они доступны
 
   metadata_and_shell_checks: # Отдельный job для шагов контекста и shell-примеров
-    name: Job 5 - Metadata and Service Checks
+    name: Job 5 - Use services
     runs-on: ubuntu-24.04
     services: # Сервис для примера интеграции; текущие шаги от него не зависят
       redis: # Пример использования сервисов в GitHub Actions. Redis будет запущен в контейнере и доступен на порту 6379.
         image: redis:7-alpine
+        ports:
+          - 6379:6379
         options: >- # Параметры для настройки контейнера Redis
           --health-cmd "redis-cli ping"
           --health-interval 10s
@@ -298,40 +297,22 @@ jobs:
       - name: Step 1 - Checkout repository # Получение репозитория
         uses: actions/checkout@v5
 
-      - name: Step 2 - Get commit info # Сохранение переменных в output step
-        id: commit_id
+      - name: Step 2 - Verify Redis service is working
+        shell: bash
         run: |
-          echo "sha_var=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-          echo "message_var=$(git log -1 --pretty=%B)" >> $GITHUB_OUTPUT
-          echo "author_var=$(git log -1 --pretty=%an)" >> $GITHUB_OUTPUT
+          # Send RESP PING to Redis and fail if we do not receive +PONG.
+          response=$(python3 - <<'PY'
+          import socket
 
-      - name: Step 3 - Display commit info # Использование outputs предыдущего step
-        run: |
-          echo "Commit SHA: ${{ steps.commit_id.outputs.sha_var }}"
-          echo "Author: ${{ steps.commit_id.outputs.author_var }}"
+          payload = b"*1\r\n$4\r\nPING\r\n"
+          with socket.create_connection(("127.0.0.1", 6379), timeout=5) as s:
+              s.sendall(payload)
+              print(s.recv(64).decode("ascii", errors="replace").strip())
+          PY
+          )
 
-      - name: "Step 4 - Run multiple commands with set -e" # Несколько команд с корректной обработкой ошибок
-        run: |
-          set -e
-          echo "Step 1: Checking syntax"
-          echo "Step 2: Running linter"
-          echo "Step 3: Running tests"
-
-      - name: 'Step 5 - Loop through items' # Циклическая конструкция
-        run: |
-          for i in 1 2 3; do
-            echo "Processing item $i"
-          done
-
-      - name: 'Step 6 - Conditional logic in bash script' # Условная логика в run block
-        run: |
-          if [ "${{ github.event_name }}" == "pull_request" ]; then
-            echo "Running PR checks..."
-          elif [ "${{ github.event_name }}" == "push" ]; then
-            echo "Running push checks..."
-          else
-            echo "Running scheduled checks..."
-          fi
+          echo "Redis response: $response"
+          [[ "$response" == "+PONG" ]]
 
 
   security: # Параллельный job проверки безопасности
@@ -347,7 +328,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Step 2 - Print step PORT variable # Вывести PORT для этого step
-        run: echo "STEP_PORT=$PORT" # Нужно использовать "", чтобы переменная была интерполирована в bash. Если использовать '', будет напечатано буквально GLOBAL_PORT=$PORT, а не его значение.
+        run: echo "STEP_PORT=$PORT" # 1111 Нужно использовать "", чтобы переменная была интерполирована в bash. Если использовать '', будет напечатано буквально GLOBAL_PORT=$PORT, а не его значение.
         env: # Переменные окружения, специфичные для step
           PORT: 1111 # Переопределить PORT для этого step
 
