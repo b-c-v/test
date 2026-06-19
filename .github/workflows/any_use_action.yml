@@ -4,13 +4,28 @@ on:
     branches:
       - main
 jobs:
-   lint_job:
-     name: Job 1 - Linting
-     runs-on: ubuntu-24.04
-     steps:
-       - name: Step 1 - Get Code
-         uses: actions/checkout@v3
-       - name: Step 2 - Use custom action to load and cache dependencies
-         uses: ./.github/workflows/any_name # Don't need to specify the action.yml file, GitHub automatically looks for it in the action directory
-       - name: Step 3 - Run Linter
-         run: echo "Running linter..."
+  lint_job:
+    name: Job 1 - Use cache action
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Step 1 - Get Code
+        uses: actions/checkout@v3
+      - name: Step 2 - Use custom action to load and cache dependencies
+        uses: ./.github/workflows/any_name # Don't need to specify the action.yml file, GitHub automatically looks for it in the action directory
+        with:
+          any_name_var: "true" # Set the input variable to true to enable caching
+      - name: Step 3 - With cache action
+        run: echo "Use cache action ..."
+
+  lint_job_no_cache:
+    name: Job 2 - Do not use cache action
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Step 1 - Get Code
+        uses: actions/checkout@v3
+      - name: Step 2 - Use custom action without cache
+        uses: ./.github/workflows/any_name
+        with:
+          any_name_var: "false" # Set the input variable to false to disable caching
+      - name: Step 3 - Without cache action
+        run: echo "Do not use cache action ..."

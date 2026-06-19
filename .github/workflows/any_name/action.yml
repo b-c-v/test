@@ -1,15 +1,21 @@
 name: Simple example of a composite GitHub Action for caching dependencies
 description: Get the dependencies and cache them for future runs
+inputs:
+  any_name_var:
+    description: 'An example input for the action'
+    required: false
+    default: 'false'
 runs:
   using: "composite" # allows to define multiple steps in a single action
   steps:
     - name: Step 1 - Custom action to cache dependencies
-      id: cache_dependencies
+      if: inputs.any_name_var == 'true' # Only run this step if the input is set to true
+      id: cache_dependencies_id
       uses: actions/cache@v3
       with:
         path: node_modules # Путь к папке с зависимостями, которую нужно кэшировать
         key: deps-node-modules-${{ hashFiles('**/package-lock.json') }} # Ключ кэша, основанный на хэше package-lock.json
     - name: Step 2 - Custom action to install dependencies
-      if: steps.cache_dependencies.outputs.cache-hit != 'true' # Устанавливать зависимости только если кэш не найден
+      if: steps.cache_dependencies_id.outputs.cache-hit != 'true' || inputs.any_name_var != 'true' # Устанавливать зависимости, если кэш не найден или если входной параметр не установлен в true
       shell: bash
-      run: echo "Installing dependencies..."
+      run: echo "Installing dependencies without cache..."
