@@ -3,18 +3,18 @@ description: Get the dependencies and cache them for future runs
 inputs:
   any_name_var:
     description: "An example input for the action"
-    required: false
+    required: true
     default: "false"
 outputs:
   cache_dependencies_output:
     description: "Output from the cache dependencies step"
-    value: ${{ steps.install_dependencies_id.outputs.cache_dependencies_output }}
+    value: ${{ steps.install_dependencies_id.outputs.cache_dependencies_var }} # The output value is set to the output of the install_dependencies_id step
 runs:
   using: "composite" # allows to define multiple steps in a single action
   steps:
     - name: Step 1 - Custom action to cache dependencies
-      if: inputs.any_name_var == 'true' # Only run this step if the input is set to true
       id: cache_dependencies_id
+      if: inputs.any_name_var == 'true' # Only run this step if the input is set to true
       uses: actions/cache@v3
       with:
         path: node_modules # Путь к папке с зависимостями, которую нужно кэшировать
@@ -24,5 +24,5 @@ runs:
       if: steps.cache_dependencies_id.outputs.cache-hit != 'true' || inputs.any_name_var != 'true' # Устанавливать зависимости, если кэш не найден или если входной параметр не установлен в true
       shell: bash
       run: |
-        echo "cache_dependencies_output=${{ inputs.any_name_var }}" >> "$GITHUB_OUTPUT" # Set the output variable to indicate whether caching was used or not
+        echo "cache_dependencies_var=${{ inputs.any_name_var }}" >> "$GITHUB_OUTPUT" # Set the output variable to indicate whether caching was used or not
         echo "Installing dependencies without cache..."

@@ -4,7 +4,7 @@ on:
     branches:
       - main
 jobs:
-  lint_job:
+  any_use_action_job:
     name: Job 1 - Use cache action
     runs-on: ubuntu-24.04
     steps:
@@ -18,9 +18,9 @@ jobs:
       - name: Step 3 - With cache action
         run: echo "Use cache action ..."
       - name: Step 4 - Output from the cache dependencies step
-        run: echo "Cache used? '${{ steps.job1_call_custom_action.outputs.cache_dependencies_output }}'"
+        run: echo "Cache used? '${{ steps.job1_call_custom_action.outputs.cache_dependencies_output }}'" # Output the value of the cache_dependencies_output variable that defined in the custom action
 
-  lint_job_no_cache:
+  any_use_action_job_no_cache:
     name: Job 2 - Do not use cache action
     runs-on: ubuntu-24.04
     steps:
@@ -30,8 +30,8 @@ jobs:
         id: job2_call_custom_action
         uses: ./.github/workflows/any_name
         with:
-          any_name_var: "false" # Set the input variable to false to disable caching
+          any_name_var: "false" # name of the variable should be the same as declared in the action.yml file
       - name: Step 3 - Without cache action
         run: echo "Do not use cache action ..."
       - name: Step 4 - Output from the cache dependencies step
-        run: echo "Cache used? '${{ steps.job2_call_custom_action.outputs.cache_dependencies_output }}'"
+        run: echo "Cache used? '${{ steps.job2_call_custom_action.outputs.cache_dependencies_output }}'" # Pattern: steps.<step_id>.outputs.<output_name_declared_by_that_action>
