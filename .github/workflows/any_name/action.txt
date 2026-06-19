@@ -1,5 +1,7 @@
-name: Simple example of a composite GitHub Action for caching dependencies
-description: Get the dependencies and cache them for future runs
+# .github\workflows\any_name\action.yml
+
+name: Simple example of a Composite Action
+description: Use a composite action to cache dependencies in a workflow. The action has an input variable that allows to enable or disable caching, and an output variable that indicates whether caching was used or not.
 inputs:
   any_name_var:
     description: "An example input for the action"

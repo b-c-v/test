@@ -1,4 +1,5 @@
-name: Deployment
+# .github\workflows\any_use_action.yml
+name: Use custom action to cache dependencies in a workflow
 on:
   push:
     branches:
