@@ -300,14 +300,32 @@ jobs:
         if: steps.check_package_json_id.outputs.exists_var == 'true' # Только если package.json существует
         run: npm install # npm install будет использовать кэшированные node_modules если они доступны
 
-  service_use_job: # Отдельный job для шагов контекста и shell-примеров
-    name: Job 5 - Use services
+  container_job:
+    name: Job 5 - Run in container # Имя job в интерфейсе Actions
     runs-on: ubuntu-24.04
-    services: # Сервис для примера интеграции; текущие шаги от него не зависят
-      redis: # Пример использования сервисов в GitHub Actions. Redis будет запущен в контейнере и доступен на порту 6379.
+    container: # Запускать job в контейнере
+      image: node:lts-alpine3.24
+    permissions: # Минимально необходимые права токена для этого job
+      contents: read # Разрешить checkout репозитория
+      security-events: write # Нужно для публикации результатов security-проверок
+
+    steps: # Steps job-а container_run
+      - name: Step 1 - Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Step 2 - Print step PORT variable # Вывести PORT для этого step
+        run: echo "STEP_PORT=$PORT" # 1111 Нужно использовать "", чтобы переменная была интерполирована в bash. Если использовать '', будет напечатано буквально GLOBAL_PORT=$PORT, а не его значение.
+        env: # Переменные окружения, специфичные для step
+          PORT: 1111 # Переопределить PORT для этого step
+
+  service_job: # Отдельный job для шагов контекста и shell-примеров
+    name: Job 6 - Use services without container
+    runs-on: ubuntu-24.04
+    services: # Без container: нужно явно указывать IP/host и port при подключении к сервису.
+      redis: # Пример: подключение из steps идёт через 127.0.0.1:6379 (или localhost:6379).
         image: redis:7-alpine
         ports:
-          - 6379:6379
+          - 6379:6379 # Явная публикация порта нужна, чтобы обращаться к сервису по IP/PORT с runner.
         options: >- # Параметры для настройки контейнера Redis
           --health-cmd "redis-cli ping"
           --health-interval 10s
@@ -321,6 +339,7 @@ jobs:
       - name: Step 2 - Verify Redis service is working
         shell: bash
         run: |
+          # Без container job указываем endpoint явно: 127.0.0.1 + port 6379.
           # Send RESP PING to Redis and fail if we do not receive +PONG.
           response=$(python3 - <<'PY'
           import socket
@@ -335,26 +354,59 @@ jobs:
           echo "Redis response: $response"
           [[ "$response" == "+PONG" ]]
 
-
-  container_run_job:
-    name: Job 6 - Run in container # Имя job в интерфейсе Actions
+  service_container_job: # Job для проверки интеграции сервис-контейнера в той же сети, что и container job
+    name: Job 7 - Use service container with job container
     runs-on: ubuntu-24.04
-    container: node:lts-alpine3.24 # Запускать job в контейнере
-    permissions: # Минимально необходимые права токена для этого job
-      contents: read # Разрешить checkout репозитория
-      security-events: write # Нужно для публикации результатов security-проверок
+    container: # Все steps выполняются внутри job container
+      image: node:lts-alpine3.24
+    services: # С container job сервис доступен по имени (redis), но port все равно указывается в клиенте (6379).
+      redis:
+        image: redis:7-alpine
+        options: >- # Параметры healthcheck, чтобы runner дождался готовности Redis
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
-    steps: # Steps job-а container_run
+    steps:
       - name: Step 1 - Checkout repository
         uses: actions/checkout@v5
 
-      - name: Step 2 - Print step PORT variable # Вывести PORT для этого step
-        run: echo "STEP_PORT=$PORT" # 1111 Нужно использовать "", чтобы переменная была интерполирована в bash. Если использовать '', будет напечатано буквально GLOBAL_PORT=$PORT, а не его значение.
-        env: # Переменные окружения, специфичные для step
-          PORT: 1111 # Переопределить PORT для этого step
+      - name: Step 2 - Check Redis availability from container job via shared network
+        shell: sh
+        run: |
+          # В container job сервисы доступны по имени (redis) через общую сеть job.
+          response=$(node - <<'JS'
+          const net = require('net');
+
+          const socket = net.createConnection({ host: 'redis', port: 6379 }, () => {
+            socket.write('*1\\r\\n$4\\r\\nPING\\r\\n');
+          });
+
+          socket.setTimeout(5000);
+
+          socket.on('data', (chunk) => {
+            process.stdout.write(chunk.toString('ascii').trim());
+            socket.end();
+          });
+
+          socket.on('timeout', () => {
+            console.error('Timeout while connecting to redis service');
+            process.exit(1);
+          });
+
+          socket.on('error', (err) => {
+            console.error(err.message);
+            process.exit(1);
+          });
+          JS
+          )
+
+          echo "Redis response via service hostname 'redis': $response"
+          [ "$response" = "+PONG" ]
 
   errors_handling_job: # Зависит от других jobs
-    name: Job 7 - Error Handling and Continue on Error
+    name: Job 8 - Error Handling and Continue on Error
     runs-on: ubuntu-24.04
     # Этот job запускается только если cache_use_job завершился успешно
     needs: cache_use_job # Дождаться завершения job cache_use_job
@@ -395,14 +447,14 @@ jobs:
         if: failure() && steps.continue_on_error_step_id.conclusion == 'success' # success потому что conclusion учитывает continue-on-error
         run: echo "Build for step continue_on_error_step_id failed (checked via conclusion)..."
 
-  outputs_show_job: # Зависит от any_name_job и container_run_job
-    name: Job 8 - Outputs show for environment ${{ github.event.inputs.deployment_target || 'staging' }} # Динамическое имя целевого окружения
+  outputs_show_job: # Зависит от any_name_job и container_job
+    name: Job 9 - Outputs show for environment ${{ github.event.inputs.deployment_target || 'staging' }} # Динамическое имя целевого окружения
     runs-on: ubuntu-24.04
-    needs: [any_name_job, container_run_job] # Дождаться обоих upstream jobs
+    needs: [any_name_job, container_job] # Дождаться обоих upstream jobs
     if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' # Выполнять деплой только из main или при ручном запуске
     environment: # Используемый определённый GitHub environment для этого job (Settings ==> Environments)
       name: ${{ github.event.inputs.deployment_target || 'staging' }} # Выбранное окружение (можно использовать разные environments для разных job.)
-      url: https://example.com # URL целевого приложения
+      url: https://example.com # URL целевого приложения (будет отображаться на схеме деплоя в интерфейсе GitHub Actions)
 
     steps: # Steps деплоя
       - name: Step 1 - Checkout repository # Получение репозитория
@@ -427,9 +479,9 @@ jobs:
         run: 'echo "WARNING: Deploying to production!"'
 
   report_job:
-    name: Job 9 - Report on failures # Job для отчёта о неудачных job-ах
+    name: Job 10 - Report on failures # Job для отчёта о неудачных job-ах
     runs-on: ubuntu-24.04
-    needs: [any_name_job, conditions_job, variable_print_job, cache_use_job, service_use_job, container_run_job, errors_handling_job, outputs_show_job] # Дождаться всех основных jobs
+    needs: [any_name_job, conditions_job, variable_print_job, cache_use_job, container_job, service_job, service_container_job, errors_handling_job, outputs_show_job] # Дождаться всех основных jobs
     if: failure()
     steps: # Steps для отчёта о неудачных job-ах
       - name: Step 1 - Report failed jobs # Вывести список неудачных jobs
@@ -443,10 +495,10 @@ jobs:
           fi
 
   status_job: # Финальный job отчётности и очистки
-    name: Job 10 - Workflow Status # Сводка по результату pipeline
+    name: Job 11 - Workflow Status # Сводка по результату pipeline
     runs-on: ubuntu-24.04
     if: always() # Всегда запускается, даже если предыдущие jobs завершились ошибкой
-    needs: [any_name_job, conditions_job, variable_print_job, cache_use_job, service_use_job, container_run_job, errors_handling_job, outputs_show_job] # Дождаться всех основных jobs
+    needs: [any_name_job, conditions_job, variable_print_job, cache_use_job, container_job, service_job, service_container_job, errors_handling_job, outputs_show_job] # Дождаться всех основных jobs
 
     steps: # Steps финальной отчётности по статусу
       - name: Step 1 - Report success # Сообщение для полностью успешного workflow
@@ -468,7 +520,8 @@ jobs:
           echo " conditions_job: ${{ needs.conditions_job.result }}"
           echo " variable_print_job: ${{ needs.variable_print_job.result }}"
           echo " cache_use_job: ${{ needs.cache_use_job.result }}"
-          echo " service_use_job: ${{ needs.service_use_job.result }}"
-          echo " container_run_job: ${{ needs.container_run_job.result }}"
+          echo " service_job: ${{ needs.service_job.result }}"
+          echo " service_container_job: ${{ needs.service_container_job.result }}"
+          echo " container_job: ${{ needs.container_job.result }}"
           echo " errors_handling_job: ${{ needs.errors_handling_job.result }}"
           echo " outputs_show_job: ${{ needs.outputs_show_job.result }}"
