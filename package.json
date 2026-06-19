@@ -1,0 +1,10 @@
+{
+  "name": "any-name-action",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dependencies for local composite GitHub Action",
+  "scripts": {
+    "lint": "echo 'No lint rules configured yet'"
+  },
+  "license": "UNLICENSED"
+}
