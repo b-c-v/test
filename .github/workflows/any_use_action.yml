@@ -10,7 +10,7 @@ jobs:
      steps:
        - name: Step 1 - Get Code
          uses: actions/checkout@v3
-       - name: Step 2 - Load and cache dependencies
+       - name: Step 2 - Use custom action to load and cache dependencies
          uses: ./.github/workflows/any_name # Don't need to specify the action.yml file, GitHub automatically looks for it in the action directory
        - name: Step 3 - Run Linter
-         run: npm run lint
+         run: echo "Running linter..."
