@@ -340,16 +340,8 @@ jobs:
         shell: bash
         run: |
           # Без container job указываем endpoint явно: 127.0.0.1 + port 6379.
-          # Send RESP PING to Redis and fail if we do not receive +PONG.
-          response=$(python3 - <<'PY'
-          import socket
-
-          payload = b"*1\r\n$4\r\nPING\r\n"
-          with socket.create_connection(("127.0.0.1", 6379), timeout=5) as s:
-              s.sendall(payload)
-              print(s.recv(64).decode("ascii", errors="replace").strip())
-          PY
-          )
+          # Send RESP PING via netcat and fail if we do not receive +PONG.
+          response=$(printf '*1\r\n$4\r\nPING\r\n' | nc -w 5 127.0.0.1 6379 | tr -d '\r\n')
 
           echo "Redis response: $response"
           [[ "$response" == "+PONG" ]]
@@ -376,34 +368,20 @@ jobs:
         shell: sh
         run: |
           # В container job сервисы доступны по имени (redis) через общую сеть job.
-          response=$(node - <<'JS'
-          const net = require('net');
-
-          const socket = net.createConnection({ host: 'redis', port: 6379 }, () => {
-            socket.write('*1\\r\\n$4\\r\\nPING\\r\\n');
-          });
-
-          socket.setTimeout(5000);
-
-          socket.on('data', (chunk) => {
-            process.stdout.write(chunk.toString('ascii').trim());
-            socket.end();
-          });
-
-          socket.on('timeout', () => {
-            console.error('Timeout while connecting to redis service');
-            process.exit(1);
-          });
-
-          socket.on('error', (err) => {
-            console.error(err.message);
-            process.exit(1);
-          });
-          JS
-          )
-
-          echo "Redis response via service hostname 'redis': $response"
-          [ "$response" = "+PONG" ]
+          # Retry loop: up to 12 attempts with 2.5s pause between them.
+          i=1
+          while [ $i -le 12 ]; do
+            response=$(printf '*1\r\n$4\r\nPING\r\n' | nc -w 3 redis 6379 | tr -d '\r\n')
+            if [ "$response" = "+PONG" ]; then
+              echo "Redis response via service hostname 'redis': $response"
+              exit 0
+            fi
+            echo "Redis check attempt $i/12 failed (got: '$response'), retrying..."
+            i=$((i + 1))
+            sleep 2.5
+          done
+          echo "Redis did not respond with +PONG after 12 attempts"
+          exit 1
 
   errors_handling_job: # Зависит от других jobs
     name: Job 8 - Error Handling and Continue on Error
