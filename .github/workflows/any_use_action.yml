@@ -11,11 +11,14 @@ jobs:
       - name: Step 1 - Get Code
         uses: actions/checkout@v3
       - name: Step 2 - Use custom action to load and cache dependencies
+        id: job1_call_custom_action
         uses: ./.github/workflows/any_name # Don't need to specify the action.yml file, GitHub automatically looks for it in the action directory
         with:
           any_name_var: "true" # Set the input variable to true to enable caching
       - name: Step 3 - With cache action
         run: echo "Use cache action ..."
+      - name: Step 4 - Output from the cache dependencies step
+        run: echo "Cache used? '${{ steps.job1_call_custom_action.outputs.cache_dependencies_output }}'"
 
   lint_job_no_cache:
     name: Job 2 - Do not use cache action
@@ -24,8 +27,11 @@ jobs:
       - name: Step 1 - Get Code
         uses: actions/checkout@v3
       - name: Step 2 - Use custom action without cache
+        id: job2_call_custom_action
         uses: ./.github/workflows/any_name
         with:
           any_name_var: "false" # Set the input variable to false to disable caching
       - name: Step 3 - Without cache action
         run: echo "Do not use cache action ..."
+      - name: Step 4 - Output from the cache dependencies step
+        run: echo "Cache used? '${{ steps.job2_call_custom_action.outputs.cache_dependencies_output }}'"
