@@ -1,0 +1,16 @@
+name: Deployment
+on:
+  push:
+    branches:
+      - main
+jobs:
+   lint_job:
+     name: Job 1 - Linting
+     runs-on: ubuntu-24.04
+     steps:
+       - name: Get Code
+         uses: actions/checkout@v3
+       - name: Load and cache dependencies
+         uses: ./.github/workflows/any_name # Don't need to specify the action.yml file, GitHub automatically looks for it in the action directory
+       - name: Run Linter
+         run: npm run lint

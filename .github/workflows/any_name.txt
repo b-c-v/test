@@ -387,7 +387,9 @@ jobs:
     name: Job 8 - Error Handling and Continue on Error
     runs-on: ubuntu-24.04
     # Этот job запускается только если cache_use_job завершился успешно
-    needs: cache_use_job # Дождаться завершения job cache_use_job
+    needs: # Альтернативный синтаксис записи без []
+      - any_name_job
+      - cache_use_job
     if: success() # Пропустить, если обязательная предыдущая работа завершилась ошибкой
 
     steps: # Steps обработки ошибок
@@ -425,10 +427,10 @@ jobs:
         if: failure() && steps.continue_on_error_step_id.conclusion == 'success' # success потому что conclusion учитывает continue-on-error
         run: echo "Build for step continue_on_error_step_id failed (checked via conclusion)..."
 
-  outputs_show_job: # Зависит от any_name_job и container_job
+  outputs_show_job: # Зависит от any_name_job
     name: Job 9 - Outputs show for environment ${{ github.event.inputs.deployment_target || 'staging' }} # Динамическое имя целевого окружения
     runs-on: ubuntu-24.04
-    needs: [any_name_job, container_job] # Дождаться обоих upstream jobs
+    needs: [any_name_job] # Дождаться завершения job any_name_job, чтобы использовать его outputs
     if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' # Выполнять деплой только из main или при ручном запуске
     environment: # Используемый определённый GitHub environment для этого job (Settings ==> Environments)
       name: ${{ github.event.inputs.deployment_target || 'staging' }} # Выбранное окружение (можно использовать разные environments для разных job.)
