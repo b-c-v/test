@@ -1,0 +1,18 @@
+name: "Simple Docker Action"
+description: "Minimal Docker-based GitHub Action example"
+
+inputs:
+  who-to-greet:
+    description: "Name to greet"
+    required: false
+    default: "World"
+
+outputs:
+  time:
+    description: "Time when the action ran"
+
+runs:
+  using: "docker" # Shows that this is a Docker action
+  image: "Dockerfile"
+  args:
+    - ${{ inputs.who-to-greet }}

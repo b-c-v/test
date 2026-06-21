@@ -1,0 +1,23 @@
+name: Use Docker Action Example
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  run-docker-action:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run local Docker action
+        id: docker_example
+        uses: ./.github/workflows/any_docker
+        with:
+          who-to-greet: "GitHub Actions"
+
+      - name: Show output from Docker action
+        run: 'echo "Action execution time: ${{ steps.docker_example.outputs.time }}"'
