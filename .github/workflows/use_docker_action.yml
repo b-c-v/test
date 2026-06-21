@@ -15,10 +15,13 @@ jobs:
 
       - name: Run local Docker action
         id: docker_example
+        env:
+          CALLER_STEP_TAG_VAR: "from-step-env" # Passing an environment variable to the Docker action
         uses: ./.github/workflows/any_docker
         with:
           who-to-greet_var: "GitHub Actions"
           greeting-prefix_var: "Hi"
+          any_input_var: "value-from-workflow-input"
 
       - name: Show output from Docker action
         run: 'echo "Action execution time: ${{ steps.docker_example.outputs.any_time_var }}"'

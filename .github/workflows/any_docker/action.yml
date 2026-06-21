@@ -10,6 +10,10 @@ inputs:
     description: "Greeting prefix"
     required: false
     default: "Hello"
+  any_input_var: # Auto-mapped by runner to INPUT_ANY_INPUT_VAR
+    description: "Example input read via automatic INPUT_ prefix"
+    required: false
+    default: "default-from-input-prefix"
 
 outputs:
   any_time_var:
@@ -19,6 +23,6 @@ runs:
   using: "docker" # Shows that this is a Docker action
   image: "Dockerfile" # Specifies the ./path/to/Dockerfile to use for building the image. Also can be a pre-built image from Docker Hub or GHCR.
   args:
-    - ${{ inputs.who-to-greet_var }} # Positional passing; available as $1 in sh -c
+    - ${{ inputs.who-to-greet_var }} # Variable passed positionally, available as $1 in sh -c
   env:
-    GREETING_PREFIX_VAR: ${{ inputs.greeting-prefix_var }} # New var example passed by name
+    GREETING_PREFIX_VAR: ${{ inputs.greeting-prefix_var }} # Variable passed by name, available as $GREETING_PREFIX_VAR in sh -c
