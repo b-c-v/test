@@ -1,11 +1,11 @@
 const fs = require('fs');
 
-const name = process.env.INPUT_NAME || 'World';
-const time = new Date().toISOString();
+const anyNameVar = process.env.INPUT_ANY_NAME_VAR || 'World';
+const anyTimeVar = new Date().toISOString();
 
-console.log(`Hello, ${name}!`);
-console.log(`Current UTC time: ${time}`);
+console.log(`Hello, ${anyNameVar}!`);
+console.log(`Current UTC time: ${anyTimeVar}`);
 
 if (process.env.GITHUB_OUTPUT) {
-  fs.appendFileSync(process.env.GITHUB_OUTPUT, `time=${time}\n`);
+  fs.appendFileSync(process.env.GITHUB_OUTPUT, `any_time_var=${anyTimeVar}\n`);
 }

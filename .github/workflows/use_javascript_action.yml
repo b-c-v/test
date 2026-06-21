@@ -1,0 +1,25 @@
+name: Run Local JavaScript Action
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  demo-javascript-action:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4 # because we use JavaScript action from the same repository, we need to checkout the code first. If we use JavaScript action from another repository, we don't need to checkout the code.
+
+      - name: Run local JavaScript action
+        id: js_action
+        uses: ./.github/workflows/any_javascript # to use JavaScript action need to specify path to action.yml file
+        env: # pass
+          NODE_OPTIONS: --experimental-fetch # because we use fetch API in our JavaScript action, we need to enable experimental fetch API in Node.js
+        with:
+          any_name_var: GitHub Actions
+
+      - name: Show action output
+        run: echo "Action returned time ='${{ steps.js_action.outputs.any_time_var }}'" # to access output of JavaScript action we need to use steps.<step_id>.outputs.<output_name> syntax.
