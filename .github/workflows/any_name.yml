@@ -1,4 +1,3 @@
-# any_name.yml
 name: Any workflow name # Имя workflow, отображаемое в интерфейсе Actions
 on: # События, которые запускают этот workflow
   # Push-событие для определённых веток и путей
@@ -63,7 +62,7 @@ jobs:
     strategy: # Настройка поведения matrix-выполнения
       fail-fast: false # Выполнить все matrix jobs, даже если один из них завершится ошибкой
       matrix: # Комбинации для сборки и тестирования
-        any_name_os: [ubuntu-24.04, macos-15, windows-2025] # Поддерживаемые операционные системы (see https://docs.github.com/en/actions/reference/runners/github-hosted-runners)
+        any_name_os: [ubuntu-24.04, macos-15, windows-2025] # Поддерживаемые операционные системы (see github-hosted-runners)
         any_node_version: ['18', '20'] # Поддерживаемые версии Node.js
         include: # Включить дополнительные комбинации, которые не входят в декартово произведение any_name_os и any_node_version
           - any_name_os: ubuntu-22.04
@@ -96,16 +95,16 @@ jobs:
           registry-url: "https://registry.npmjs.org" # Реестр npm по умолчанию
 
       # - name: Step 3 - Fail-fast probe # Временный шаг для проверки fail-fast в matrix
-      #   if: ${{ matrix.any_name_os == 'ubuntu-24.04' && matrix.any_node_version == '18' }}
-      #   run: exit 1 # Step и Job будет отмечен как Failed, но остальные комбинации в matrix продолжат выполнение
+      # if: ${{ matrix.any_name_os == 'ubuntu-24.04' && matrix.any_node_version == '18' }}
+      # run: exit 1 # Step и Job будет отмечен как Failed, но остальные комбинации в matrix продолжат выполнение
 
       - name: Step 4 - Check if package.json exists # Проверить наличие package.json
         id: check_package_json_id # Идентификатор шага для использования в if условии в следующих steps
         shell: bash # Явно использовать bash shell для выполнения run-команды (по умолчанию используется sh на Linux и macOS, и cmd на Windows)
         run: echo "exists_var=$(test -f package.json && echo 'true' || echo 'false')" >> "$GITHUB_OUTPUT"
 
-      - name: Step 5 - Cache dependencies # Кэширование зависимостей npm для ускорения сборки. Кэш можно использовать в любом другом workflow или job, который использует тот же ключ кэша.
-        if: steps.check_package_json_id.outputs.exists_var == 'true' # Только если package.json существует. check_package_json_id - это id предыдущего шага, outputs.exists_var - это значение, которое было записано в $GITHUB_OUTPUT в том шаге.
+      - name: Step 5 - Cache dependencies # Кэширование зависимостей npm для ускорения сборки. Кэш можно использовать в любом другом workflow или job, который использует тот же ключ кэша
+        if: steps.check_package_json_id.outputs.exists_var == 'true' # Только если package.json существует. check_package_json_id - это id предыдущего шага, outputs.exists_var - это значение, которое было записано в $GITHUB_OUTPUT в том шаге
         uses: actions/cache@v4 # Action для кэширования файлов между runs
         id: cache_id # Идентификатор шага кэширования, чтобы проверить его результат в следующих шагах
         with: # Параметры кэширования
@@ -157,7 +156,7 @@ jobs:
       - name: 'Step 1 - Working directory example' # Переопределить рабочий каталог по умолчанию
         working-directory: . # Текущий корень репозитория
         run: 'echo "Current directory: $(pwd)"'
-      
+
       - name: Step 2 - Checkout repository
         uses: actions/checkout@v5
 
@@ -204,7 +203,7 @@ jobs:
           echo "JOB_PORT=${{ env.PORT }}" # Альтернативный синтаксис для доступа к переменной окружения
           echo 'JOB_PORT=$PORT' # Нужно использовать "", чтобы переменная была интерполирована в bash
           echo 'JOB_PORT=${{ env.PORT }}' # В этом случае переменная будет интерполирована и выведет значения PORT
-          echo "JOB_ID=$GITHUB_JOB" # Вывод значения default environment variable (see https://docs.github.com/en/actions/reference/workflows-and-actions/variables). Для глобальной переменной внутри run нужно использовать синтаксис оболочки для доступа к переменным окружения, а не синтаксис GitHub Actions (${{ '${{GITHUB_JOB}}' }} или env.GITHUB_JOB).
+          echo "JOB_ID=$GITHUB_JOB" # Вывод значения default environment variable (see https://docs.github.com/en/actions/reference/workflows-and-actions/variables). Для глобальной переменной внутри run нужно использовать синтаксис оболочки для доступа к переменным окружения, а не синтаксис GitHub Actions (${{ '${{GITHUB_JOB}}' }} или env.GITHUB_JOB)
           echo "JOB_ID_ACTION_SYNTAX=${{ github.job }}" # Синтаксис GitHub Actions для печати того же значения, что и в глобальной переменной {GITHUB_JOB}}
 
       - name: Step 10 - Get commit info # Сохранение переменных в output step
@@ -243,7 +242,7 @@ jobs:
           fi
 
       - name: Step 15 - Print GitHub context # Вывести весь GitHub context
-        run: echo " ${{github }}" # GitHub context - это набор переменных, которые предоставляют информацию о событии, репозитории, коммите и других аспектах текущего workflow run.
+        run: echo " ${{github }}" # GitHub context - это набор переменных, которые предоставляют информацию о событии, репозитории, коммите и других аспектах текущего workflow run
 
       - name: 'Step 16 - Print GitHub context variables' # Вывести выбранные значения GitHub context
         run: |
@@ -274,7 +273,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Step 2 - Print global PORT variable # Вывести GLOBAL PORT
-        run: echo "GLOBAL_PORT=$PORT" # 8888 Нужно использовать "", чтобы переменная была интерполирована в bash. Если использовать '', будет напечатано буквально GLOBAL_PORT=$PORT, а не его значение.
+        run: echo "GLOBAL_PORT=$PORT" # 8888 Нужно использовать "", чтобы переменная была интерполирована в bash. Если использовать '', будет напечатано буквально GLOBAL_PORT=$PORT, а не его значение
 
       - name: Step 3 - Setup Node.js 18 # Установить Node.js версии 18
         uses: actions/setup-node@v5
@@ -314,18 +313,18 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Step 2 - Print step PORT variable # Вывести PORT для этого step
-        run: echo "STEP_PORT=$PORT" # 1111 Нужно использовать "", чтобы переменная была интерполирована в bash. Если использовать '', будет напечатано буквально GLOBAL_PORT=$PORT, а не его значение.
+        run: echo "STEP_PORT=$PORT" # 1111 Нужно использовать "", чтобы переменная была интерполирована в bash. Если использовать '', будет напечатано буквально GLOBAL_PORT=$PORT, а не его значение
         env: # Переменные окружения, специфичные для step
           PORT: 1111 # Переопределить PORT для этого step
 
   service_job: # Отдельный job для шагов контекста и shell-примеров
     name: Job 6 - Use services without container
     runs-on: ubuntu-24.04
-    services: # Без container: нужно явно указывать IP/host и port при подключении к сервису.
-      redis: # Пример: подключение из steps идёт через 127.0.0.1:6379 (или localhost:6379).
+    services: # Без container: нужно явно указывать IP/host и port при подключении к сервису
+      redis: # Пример: подключение из steps идёт через 127.0.0.1:6379 (или localhost:6379)
         image: redis:7-alpine
         ports:
-          - 6379:6379 # Явная публикация порта нужна, чтобы обращаться к сервису по IP/PORT с runner.
+          - 6379:6379 # Явная публикация порта нужна, чтобы обращаться к сервису по IP/PORT с runner
         options: >- # Параметры для настройки контейнера Redis
           --health-cmd "redis-cli ping"
           --health-interval 10s
@@ -339,8 +338,8 @@ jobs:
       - name: Step 2 - Verify Redis service is working
         shell: bash
         run: |
-          # Без container job указываем endpoint явно: 127.0.0.1 + port 6379.
-          # Send RESP PING via netcat and fail if we do not receive +PONG.
+          # Без container job указываем endpoint явно: 127.0.0.1 + port 6379
+          # Send RESP PING via netcat and fail if we do not receive +PONG
           response=$(printf '*1\r\n$4\r\nPING\r\n' | nc -w 5 127.0.0.1 6379 | tr -d '\r\n')
 
           echo "Redis response: $response"
@@ -351,7 +350,7 @@ jobs:
     runs-on: ubuntu-24.04
     container: # Все steps выполняются внутри job container
       image: node:lts-alpine3.24
-    services: # С container job сервис доступен по имени (redis), но port все равно указывается в клиенте (6379).
+    services: # С container job сервис доступен по имени (redis), но port все равно указывается в клиенте (6379)
       redis:
         image: redis:7-alpine
         options: >- # Параметры healthcheck, чтобы runner дождался готовности Redis
@@ -367,8 +366,7 @@ jobs:
       - name: Step 2 - Check Redis availability from container job via shared network
         shell: sh
         run: |
-          # В container job сервисы доступны по имени (redis) через общую сеть job.
-          # Retry loop: up to 12 attempts with 2.5s pause between them.
+          # В container job сервисы доступны по имени (redis) через общую сеть job
           i=1
           while [ $i -le 12 ]; do
             response=$(printf '*1\r\n$4\r\nPING\r\n' | nc -w 3 redis 6379 | tr -d '\r\n')
@@ -444,7 +442,7 @@ jobs:
         run: |
           echo "Build artifacts from: ${{ needs.any_name_job.outputs.any_artifact_id_var }}" # Вывод ID артефакта, переданного из job any_name_job через outputs
           echo "Build status: ${{ needs.any_name_job.outputs.build_status_var }}" # Вывод статуса сборки из upstream job
-          echo "Script file: ${{ needs.any_name_job.outputs.script_file_var }}" # Вывод пути к файлу скрипта, сгенерированному в any_name_job. Jobs, которые зависят от any_name_job через needs, могут читать строку.
+          echo "Script file: ${{ needs.any_name_job.outputs.script_file_var }}" # Вывод пути к файлу скрипта, сгенерированному в any_name_job. Jobs, которые зависят от any_name_job через needs, могут читать строку
 
       - name: Step 4 - Download all artifacts # Загрузить все артефакты из предыдущих jobs (in this case only from any_job_name)
         uses: actions/download-artifact@v4 # Artifacts are available after needs: [any_name_job]
