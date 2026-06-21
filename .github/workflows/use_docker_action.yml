@@ -17,7 +17,7 @@ jobs:
         id: docker_example
         uses: ./.github/workflows/any_docker
         with:
-          who-to-greet: "GitHub Actions"
+          who-to-greet_var: "GitHub Actions"
 
       - name: Show output from Docker action
-        run: 'echo "Action execution time: ${{ steps.docker_example.outputs.time }}"'
+        run: 'echo "Action execution time: ${{ steps.docker_example.outputs.any_time_var }}"'
