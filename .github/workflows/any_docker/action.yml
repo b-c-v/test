@@ -2,10 +2,14 @@ name: "Simple Docker Action"
 description: "Minimal Docker-based GitHub Action example"
 
 inputs:
-  who-to-greet_var:
+  who-to-greet_var: # Input defined at action level (value comes from workflow 'with:')
     description: "Name to greet"
     required: false
     default: "World"
+  greeting-prefix_var: # New named input example (used as a greeting prefix)
+    description: "Greeting prefix"
+    required: false
+    default: "Hello"
 
 outputs:
   any_time_var:
@@ -15,4 +19,6 @@ runs:
   using: "docker" # Shows that this is a Docker action
   image: "Dockerfile" # Specifies the ./path/to/Dockerfile to use for building the image. Also can be a pre-built image from Docker Hub or GHCR.
   args:
-    - ${{ inputs.who-to-greet_var }}
+    - ${{ inputs.who-to-greet_var }} # Positional passing; available as $1 in sh -c
+  env:
+    GREETING_PREFIX_VAR: ${{ inputs.greeting-prefix_var }} # New var example passed by name
