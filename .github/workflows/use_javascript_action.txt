@@ -13,9 +13,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4 # because we use JavaScript action from the same repository, we need to checkout the code first. If we use JavaScript action from another repository, we don't need to checkout the code.
 
+      - name: Use remote action with ref style
+        uses: actions/setup-node@v4 # remote action example in owner/repo@ref format
+        with:
+          node-version: '20'
+
       - name: Run local JavaScript action
         id: js_action
-        uses: ./.github/workflows/any_javascript # to use JavaScript action need to specify path to action.yml file
+        uses: ./.github/workflows/any_javascript # local action from same repository uses a relative path to action.yml; remote examples: actions/checkout@v4 (owner=actions, repo=checkout) and my-org/ci-actions/setup-env@v2 (owner=my-org, repo=ci-actions)
         env: # pass
           NODE_OPTIONS: --experimental-fetch # because we use fetch API in our JavaScript action, we need to enable experimental fetch API in Node.js
         with:

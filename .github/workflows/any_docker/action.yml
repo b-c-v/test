@@ -2,15 +2,15 @@ name: "Simple Docker Action"
 description: "Minimal Docker-based GitHub Action example"
 
 inputs:
-  who-to-greet_var: # Input defined at action level (value comes from workflow 'with:')
+  who-to-greet_var: # Action input set by workflow 'with:'; this value is forwarded via runs.args[0] and read as $1 in the container command.
     description: "Name to greet"
     required: false
     default: "World"
-  greeting-prefix_var: # New named input example (used as a greeting prefix)
+  greeting-prefix_var: # Action input set by workflow 'with:'; this value is mapped to runs.env.GREETING_PREFIX_VAR and read as $GREETING_PREFIX_VAR in the container.
     description: "Greeting prefix"
     required: false
     default: "Hello"
-  any_input_var: # Auto-mapped by runner to INPUT_ANY_INPUT_VAR
+  any_var: # Action input set by workflow 'with:'; if not mapped manually, the runner still exposes it automatically as INPUT_ANY_VAR inside the container.
     description: "Example input read via automatic INPUT_ prefix"
     required: false
     default: "default-from-input-prefix"
@@ -20,9 +20,9 @@ outputs:
     description: "Time when the action ran"
 
 runs:
-  using: "docker" # Shows that this is a Docker action
-  image: "Dockerfile" # Specifies the ./path/to/Dockerfile to use for building the image. Also can be a pre-built image from Docker Hub or GHCR.
+  using: "docker" # Declares a Docker action: the runner starts a container and then injects inputs through args/env for that container process.
+  image: "Dockerfile" # Builds the local Dockerfile in this action folder; this image receives the args/env values defined below.
   args:
-    - ${{ inputs.who-to-greet_var }} # Variable passed positionally, available as $1 in sh -c
+    - ${{ inputs.who-to-greet_var }} # Connects inputs.who-to-greet_var -> first positional argument ($1), linking workflow input to container command argument.
   env:
-    GREETING_PREFIX_VAR: ${{ inputs.greeting-prefix_var }} # Variable passed by name, available as $GREETING_PREFIX_VAR in sh -c
+    GREETING_PREFIX_VAR: ${{ inputs.greeting-prefix_var }} # Connects inputs.greeting-prefix_var -> named environment variable, linking workflow input to container process environment.
