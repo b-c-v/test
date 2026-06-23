@@ -1,7 +1,7 @@
 name: Use GITHUB_TOKEN
 
 on:
-  push:
+  pull_request:
 
 permissions: # global workflow-level permissions; can be overridden at the job level
   contents: read # can read the repo contents
@@ -20,11 +20,11 @@ jobs:
         run: gh api repos/${{ github.repository }} --jq '.full_name'
 
       - name: Comment on the PR using GITHUB_TOKEN (needs issues:write)
-        if: github.event_name == 'push'
+        if: github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh pr comment ${{ github.event.push.number }} \
+          gh pr comment ${{ github.event.pull_request.number }} \
             --body "Hello from a workflow using GITHUB_TOKEN!"
 
   job-level-permissions:
@@ -34,7 +34,7 @@ jobs:
       pull-requests: write # can write to pull requests
     steps:
       - name: Label the PR (job-level permissions override the workflow-level block)
-        if: github.event_name == 'push'
+        if: github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh pr edit ${{ github.event.push.number }} --add-label "automated"
+        run: gh pr edit ${{ github.event.pull_request.number }} --add-label "automated"
