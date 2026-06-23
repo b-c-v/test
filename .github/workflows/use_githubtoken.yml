@@ -6,6 +6,7 @@ on:
 permissions: # global workflow-level permissions; can be overridden at the job level
   contents: read # can read the repo contents
   issues: write # can write to issues
+  pull-requests: write # required to comment on pull requests
 
 jobs:
   show-token-usage:
